@@ -113,37 +113,37 @@ class TetrixPiece(object):
     #     '''
     #     return self._shape_points[point].get_y()
 
-    def get_left_point_x(self) -> int:
-        '''获取最左侧点 x 轴坐标值 (x 轴最小值)
-        '''
-        min_x = self._shape_points[0].get_x()
-        for point in self._shape_points:
-            min_x = min(min_x, point.get_x())
-        return min_x
+    # def get_left_point_x(self) -> int:
+    #     '''获取最左侧点 x 轴坐标值 (x 轴最小值)
+    #     '''
+    #     min_x = self._shape_points[0].get_x()
+    #     for point in self._shape_points:
+    #         min_x = min(min_x, point.get_x())
+    #     return min_x
     
-    def get_right_point_x(self) -> int:
-        '''获取最右侧点 x 轴坐标值 (x 轴最大值)
-        '''
-        max_x = self._shape_points[0].get_x()
-        for point in self._shape_points:
-            max_x = max(max_x, point.get_x())
-        return max_x
+    # def get_right_point_x(self) -> int:
+    #     '''获取最右侧点 x 轴坐标值 (x 轴最大值)
+    #     '''
+    #     max_x = self._shape_points[0].get_x()
+    #     for point in self._shape_points:
+    #         max_x = max(max_x, point.get_x())
+    #     return max_x
     
-    def get_top_point_y(self) -> int:
-        '''获取最顶部点 y 轴坐标值 (y 轴最大值)
-        '''
-        may_y = self._shape_points[0].get_y()
-        for point in self._shape_points:
-            may_y = max(may_y, point.get_y())
-        return may_y
+    # def get_top_point_y(self) -> int:
+    #     '''获取最顶部点 y 轴坐标值 (y 轴最大值)
+    #     '''
+    #     may_y = self._shape_points[0].get_y()
+    #     for point in self._shape_points:
+    #         may_y = max(may_y, point.get_y())
+    #     return may_y
     
-    def get_bottom_point_y(self) -> int:
-        '''获取最底部点 y 轴坐标值 (y 轴最小值)
-        '''
-        min_y = self._shape_points[0].get_y()
-        for point in self._shape_points:
-            min_y = min(min_y, point.get_y())
-        return min_y
+    # def get_bottom_point_y(self) -> int:
+    #     '''获取最底部点 y 轴坐标值 (y 轴最小值)
+    #     '''
+    #     min_y = self._shape_points[0].get_y()
+    #     for point in self._shape_points:
+    #         min_y = min(min_y, point.get_y())
+    #     return min_y
 
     def clockwise(self) -> 'TetrixPiece':
         '''将部件顺时针旋转90度
