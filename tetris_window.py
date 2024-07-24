@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
 
+
+"""俄罗斯方块 显示面板
+显示部件下落、移动、旋转、堆积、消除
+"""
+
+
 # Qt
 from PySide6.QtCore import (Slot)
 from PySide6.QtGui import (QGuiApplication)
