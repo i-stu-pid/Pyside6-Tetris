@@ -103,18 +103,23 @@ class TetrisPiece(Piece):
         '''构造
         shape: 指定内置形状
         '''
+        # self.__shape = shape
+        # color = ShapeTable.get_color(shape)
+        # points = ShapeTable.get_points(shape)
+        # super().__init__(color, *points)
         self.__shape = shape
-        color = ShapeTable.get_color(shape)
-        points = ShapeTable.get_points(shape)
-        super().__init__(color, *points)
+        super().__init__(ShapeTable.get_color(shape), *ShapeTable.get_points(shape))
+
+    def __repr__(self) -> str:
+        '''实例化对象的输出信息 (详细)
+        '''
+        return str(self.__shape)
 
     def set_shape(self, shape: Shape) -> None:
         '''设置部件形状
         '''
         self.__shape = shape
-        color = ShapeTable.get_color(shape)
-        points = ShapeTable.get_points(shape)
-        self.reset(color, *points)
+        self.set(ShapeTable.get_color(shape), *ShapeTable.get_points(shape))
 
     def set_random_shape(self) -> None:
         '''随机设置形状
@@ -127,32 +132,25 @@ class TetrisPiece(Piece):
         '''
         return self.__shape
 
-    @override# 重写基类方法
-    def move(self, dx: int = 0, dy: int = 0) -> 'TetrisPiece':
-        '''移动指定偏移量
-        dx: x轴移动量
-        dy: y轴移动量
-        '''
-        if self.__shape != Shape._None:
-            for i in range(self.get_square_count()):
-                self._square_list[i].move(dx, dy)
-        return self
-
-    @override# 重写基类方法
+    @override
     def clockwise(self) -> 'TetrisPiece':
         '''将部件顺时针旋转90度
         '''
-        if self.__shape not in [Shape._None, Shape._O]:
-            for i in range(self.get_square_count()):
-                self._square_list[i].clockwise()
-        return self
+        if self.__shape in [Shape._None, Shape._O]:
+            return self
+        result = TetrisPiece(self.__shape)
+        for i, square in enumerate(result.__squares):
+            result.__squares[i].set_point(square.get_y(), -square.get_x())
+        return result
 
-    @override# 重写基类方法
+    @override
     def anti_clockwise(self) -> 'TetrisPiece':
         '''将部件逆时针旋转90度
         '''
-        if self.__shape not in [Shape._None, Shape._O]:
-            for i in range(self.get_square_count()):
-                self._square_list[i].anti_clockwise()
-        return self
+        if self.__shape in [Shape._None, Shape._O]:
+            return self
+        result = TetrisPiece(self.__shape)
+        for i, square in enumerate(result.__squares):
+            result.__squares[i].set_point(-square.get_y(), square.get_x())
+        return result
 

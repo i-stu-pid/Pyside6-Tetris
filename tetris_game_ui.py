@@ -23,26 +23,28 @@ class Ui_Form(object):
     def setupUi(self, Form):
         if not Form.objectName():
             Form.setObjectName(u"Form")
-        Form.resize(1276, 793)
+        Form.resize(1247, 793)
         self.horizontalLayout = QHBoxLayout(Form)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.verticalLayout_7 = QVBoxLayout()
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
         self.verticalLayout = QVBoxLayout()
         self.verticalLayout.setObjectName(u"verticalLayout")
+        self.label_next_piece_tip = QLabel(Form)
+        self.label_next_piece_tip.setObjectName(u"label_next_piece_tip")
+        self.label_next_piece_tip.setFrameShape(QFrame.Shape.Box)
+        self.label_next_piece_tip.setFrameShadow(QFrame.Shadow.Raised)
+        self.label_next_piece_tip.setTextFormat(Qt.TextFormat.MarkdownText)
+        self.label_next_piece_tip.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignHCenter)
+
+        self.verticalLayout.addWidget(self.label_next_piece_tip)
+
         self.label_next_piece = QLabel(Form)
         self.label_next_piece.setObjectName(u"label_next_piece")
         self.label_next_piece.setFrameShape(QFrame.Shape.Box)
         self.label_next_piece.setFrameShadow(QFrame.Shadow.Raised)
-        self.label_next_piece.setTextFormat(Qt.TextFormat.MarkdownText)
-        self.label_next_piece.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignHCenter)
 
         self.verticalLayout.addWidget(self.label_next_piece)
-
-        self.lcdNumber_next_piece = QLCDNumber(Form)
-        self.lcdNumber_next_piece.setObjectName(u"lcdNumber_next_piece")
-
-        self.verticalLayout.addWidget(self.lcdNumber_next_piece)
 
         self.verticalLayout.setStretch(1, 1)
 
@@ -50,13 +52,13 @@ class Ui_Form(object):
 
         self.verticalLayout_2 = QVBoxLayout()
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.label_level = QLabel(Form)
-        self.label_level.setObjectName(u"label_level")
-        self.label_level.setFrameShape(QFrame.Shape.Box)
-        self.label_level.setFrameShadow(QFrame.Shadow.Raised)
-        self.label_level.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignHCenter)
+        self.label_level_tip = QLabel(Form)
+        self.label_level_tip.setObjectName(u"label_level_tip")
+        self.label_level_tip.setFrameShape(QFrame.Shape.Box)
+        self.label_level_tip.setFrameShadow(QFrame.Shadow.Raised)
+        self.label_level_tip.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignHCenter)
 
-        self.verticalLayout_2.addWidget(self.label_level)
+        self.verticalLayout_2.addWidget(self.label_level_tip)
 
         self.lcdNumber_level = QLCDNumber(Form)
         self.lcdNumber_level.setObjectName(u"lcdNumber_level")
@@ -96,13 +98,13 @@ class Ui_Form(object):
         self.verticalLayout_8.setObjectName(u"verticalLayout_8")
         self.verticalLayout_3 = QVBoxLayout()
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
-        self.label_score = QLabel(Form)
-        self.label_score.setObjectName(u"label_score")
-        self.label_score.setFrameShape(QFrame.Shape.Box)
-        self.label_score.setFrameShadow(QFrame.Shadow.Raised)
-        self.label_score.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignHCenter)
+        self.label_score_tip = QLabel(Form)
+        self.label_score_tip.setObjectName(u"label_score_tip")
+        self.label_score_tip.setFrameShape(QFrame.Shape.Box)
+        self.label_score_tip.setFrameShadow(QFrame.Shadow.Raised)
+        self.label_score_tip.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignHCenter)
 
-        self.verticalLayout_3.addWidget(self.label_score)
+        self.verticalLayout_3.addWidget(self.label_score_tip)
 
         self.lcdNumber_score = QLCDNumber(Form)
         self.lcdNumber_score.setObjectName(u"lcdNumber_score")
@@ -115,13 +117,13 @@ class Ui_Form(object):
 
         self.verticalLayout_4 = QVBoxLayout()
         self.verticalLayout_4.setObjectName(u"verticalLayout_4")
-        self.label_score_removed_lines = QLabel(Form)
-        self.label_score_removed_lines.setObjectName(u"label_score_removed_lines")
-        self.label_score_removed_lines.setFrameShape(QFrame.Shape.Box)
-        self.label_score_removed_lines.setFrameShadow(QFrame.Shadow.Raised)
-        self.label_score_removed_lines.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignHCenter)
+        self.label_score_removed_lines_tip = QLabel(Form)
+        self.label_score_removed_lines_tip.setObjectName(u"label_score_removed_lines_tip")
+        self.label_score_removed_lines_tip.setFrameShape(QFrame.Shape.Box)
+        self.label_score_removed_lines_tip.setFrameShadow(QFrame.Shadow.Raised)
+        self.label_score_removed_lines_tip.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignHCenter)
 
-        self.verticalLayout_4.addWidget(self.label_score_removed_lines)
+        self.verticalLayout_4.addWidget(self.label_score_removed_lines_tip)
 
         self.lcdNumber_removed_lines = QLCDNumber(Form)
         self.lcdNumber_removed_lines.setObjectName(u"lcdNumber_removed_lines")
@@ -165,11 +167,12 @@ class Ui_Form(object):
 
     def retranslateUi(self, Form):
         Form.setWindowTitle(QCoreApplication.translate("Form", u"Form", None))
-        self.label_next_piece.setText(QCoreApplication.translate("Form", u"\u4e0b\u4e00\u4e2a", None))
-        self.label_level.setText(QCoreApplication.translate("Form", u"\u7b49\u7ea7", None))
+        self.label_next_piece_tip.setText(QCoreApplication.translate("Form", u"\u4e0b\u4e00\u4e2a", None))
+        self.label_next_piece.setText("")
+        self.label_level_tip.setText(QCoreApplication.translate("Form", u"\u7b49\u7ea7", None))
         self.pushButton_start.setText(QCoreApplication.translate("Form", u"\u5f00\u59cb", None))
-        self.label_score.setText(QCoreApplication.translate("Form", u"\u5206\u6570", None))
-        self.label_score_removed_lines.setText(QCoreApplication.translate("Form", u"\u5df2\u79fb\u9664\u884c\u6570", None))
+        self.label_score_tip.setText(QCoreApplication.translate("Form", u"\u5206\u6570", None))
+        self.label_score_removed_lines_tip.setText(QCoreApplication.translate("Form", u"\u5df2\u79fb\u9664\u884c\u6570", None))
         self.pushButton_pause.setText(QCoreApplication.translate("Form", u"\u6682\u505c", None))
         self.pushButton_quit.setText(QCoreApplication.translate("Form", u"\u9000\u51fa", None))
     # retranslateUi

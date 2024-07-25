@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1276</width>
+    <width>1247</width>
     <height>793</height>
    </rect>
   </property>
@@ -19,7 +19,7 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout" stretch="0,1">
        <item>
-        <widget class="QLabel" name="label_next_piece">
+        <widget class="QLabel" name="label_next_piece_tip">
          <property name="frameShape">
           <enum>QFrame::Shape::Box</enum>
          </property>
@@ -38,14 +38,24 @@
         </widget>
        </item>
        <item>
-        <widget class="QLCDNumber" name="lcdNumber_next_piece"/>
+        <widget class="QLabel" name="label_next_piece">
+         <property name="frameShape">
+          <enum>QFrame::Shape::Box</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Shadow::Raised</enum>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,1">
        <item>
-        <widget class="QLabel" name="label_level">
+        <widget class="QLabel" name="label_level_tip">
          <property name="frameShape">
           <enum>QFrame::Shape::Box</enum>
          </property>
@@ -109,7 +119,7 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,1">
        <item>
-        <widget class="QLabel" name="label_score">
+        <widget class="QLabel" name="label_score_tip">
          <property name="frameShape">
           <enum>QFrame::Shape::Box</enum>
          </property>
@@ -132,7 +142,7 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_4" stretch="0,1">
        <item>
-        <widget class="QLabel" name="label_score_removed_lines">
+        <widget class="QLabel" name="label_score_removed_lines_tip">
          <property name="frameShape">
           <enum>QFrame::Shape::Box</enum>
          </property>

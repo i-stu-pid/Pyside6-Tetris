@@ -15,7 +15,7 @@ __author__ = 'lihua.tan'
 
 
 # 基础库
-from typing import Union
+from typing import Union, overload
 # 自封装库
 pass
 
@@ -24,208 +24,158 @@ pass
 class Square(object):
     '''部件方块 (相当于二维点坐标)
     '''
-    def __init__(self, x=0, y=0, color=0) -> None: 
+    def __init__(self, x: int = 0, y: int = 0, color: int = 0x00) -> None: 
         '''构造
         '''
-        self._x = x
-        self._y = y
-        self._color = color
+        self.__x = x,# 设置 x 坐标
+        self.__y = y# 设置 y 坐标
+        self.__color = color# 设置颜色
 
     def __repr__(self) -> str:
         '''实例化对象的输出信息
         '''
-        return f'(x: {self._x}, y: {self._y}, color: {self.get_color_str("#")})'
-    
-    def get_x(self) -> int:
-        '''获取 x 轴坐标
-        '''
-        return self._x
-    
-    def get_y(self) -> int:
-        '''获取 y 轴坐标
-        '''
-        return self._y
+        return f'(x: {self.__x}, y: {self.__y}, color: #{hex(self.__color)[2:].upper()})'
 
     def set_point(self, x: int, y: int) -> None:
         '''设置坐标
         '''
-        self._x = x
-        self._y = y
+        self.__x, self.__y = x, y
 
-    def get_point(self) -> tuple[int]:
-        '''获取坐标
+    def get_x(self) -> int:
+        '''x 坐标
         '''
-        return (self._x, self._y)
+        return self.__x
+    
+    def get_y(self) -> int:
+        '''y 坐标
+        '''
+        return self.__y
 
     def set_color(self, color: Union[int, str]) -> None:
-        '''设置颜色值
+        '''设置颜色
         color: 表示颜色的 16进制数 / 16进制字符串 (无前缀 或 '0x'前缀)
         '''
-        self._color = color if isinstance(color, int) else int(color, 16)
-
-    def get_color_int(self) -> int:
-        '''获取颜色值
-        返回: 表示颜色的16进制数
-        '''
-        return self._color
-
-    def get_color_str(self, prefix='0x') -> str:
-        '''获取颜色值
-        prefix: 指定前缀
-        返回: 表示颜色的16进制字符串
-        '''
-        return prefix + hex(self._color)[2:].upper()
+        self.__color = color if isinstance(color, int) else int(color, 16)
     
-    def move(self, dx: int, dy: int) -> 'Square':
-        '''移动指定偏移量
-        dx: x轴偏移量
-        dy: y轴偏移量
+    def get_color(self) -> int:
+        '''方块颜色
         '''
-        self._x += dx
-        self._y += dy
-        return self
-    
-    def move_to(self, x: int, y: int) -> 'Square':
-        '''移动到指定坐标
-        '''
-        self._x = x
-        self._y = y
-        return self
-
-    def clockwise(self) -> 'Square':
-        '''将点顺时针旋转90度
-        '''
-        backup_x = self._x
-        self._x = self._y
-        self._y = -backup_x
-        return self
-
-    def anti_clockwise(self) -> 'Square':
-        '''将点逆时针旋转90度
-        '''
-        backup_x = self._x
-        self._x = -self._y
-        self._y = backup_x
-        return self
+        return self.__color
 
 
 # 游戏部件
 class Piece(object):
     '''游戏部件
-    Piece (部件) 由 n 个连续的 square (方块) 组成, square 颜色统一
+    Piece (部件) 由 n 个连续的 square (方块) 组成
     '''
-    def __init__(self, color: int, *points: tuple[int]) -> None:
-        '''构造 (自定义)
-        color: 部件颜色
-        points: 点坐标[x, y]
+    __squares = None
+
+    @overload
+    def __init__(self, *squares_params: tuple[int, int, int]) -> None:
+        '''构造 (每个方块都绑定一个颜色)
+        square_params: (x, y, color)
         '''
-        self._square_list = [Square(point[0], point[1], color, i) for i, point in enumerate(points)]
+        self.set(*squares_params)
+
+    @overload
+    def set(self, *squares_params: tuple[int, int, int]) -> None:
+        '''设置 (每个方块都绑定一个颜色)
+        square_params: (x, y, color)
+        '''
+        if self.__squares:
+            self.__squares.clear()
+        self.__squares = [Square(*params) for params in squares_params]
+
+    def __init__(self, color: int, *points: tuple[int]) -> None:
+        '''构造 (方块颜色统一)
+        color: 统一颜色
+        points: 点坐标(x, y)
+        '''
+        self.set(color, *points)
+
+    def set(self, color: int, *points: tuple[int]) -> None:
+        '''设置 (方块颜色统一)
+        color: 统一颜色
+        points: 点坐标(x, y)
+        '''
+        if self.__squares:
+            self.__squares.clear()
+        self.__squares = [Square(point[0], point[1], color) for point in points]
 
     def __repr__(self) -> str:
         '''实例化对象的输出信息 (详细)
         '''
-        return str(self._square_list)
+        return str(self.__squares)
 
-    def reset(self, color: int, *points: tuple[int]) -> None:
-        '''重置部件
-        color: 部件颜色
-        points: 点坐标[x, y]
+    def get_squares(self) -> list[Square]:
+        '''部件方块
         '''
-        self._square_list.clear()
-        self._square_list = [Square(point[0], point[1], color, i) for i, point in enumerate(points)]
+        return self.__squares
 
-    def get_square(self, index: int) -> Square:
-        '''获取部件指定方块
+    def get_squares_count(self) -> int:
+        '''部件包含方块数
         '''
-        return self._square_list[index]
-
-    def get_square_list(self) -> list[Square]:
-        '''获取部件指定方块
-        '''
-        return self._square_list
-
-    def get_square_count(self) -> int:
-        '''获取部件包含方块数
-        '''
-        return len(self._square_list)
-
-    def set_color(self, index=-1, color=0) -> None:
-        '''设置部件指定方块颜色
-        index: 方块索引 (=-1, 所有方块颜色统一)
-        color: 表示颜色的16进制数
-        '''
-        if index == -1:
-            for i in range(self.get_square_count()):
-                self._square_list[i].set_color(color)
-            return None
-        self._square_list[index].set_color(color)
-
-    def set_square_point(self, index: int, x: int, y: int) -> None:
-        '''设置方块描点坐标
-        '''
-        self._square_list[index].set_point(x, y)
+        return len(self.__squares)
 
     def get_x_list(self) -> list[int]:
-        '''获取 x 轴坐标列表
+        '''x 轴坐标列表
         '''
-        return [square.get_x() for square in self._square_list]
+        return [square.get_x() for square in self.__squares]
 
     def get_y_list(self) -> list[int]:
-        '''获取 y 轴坐标列表
+        '''y 轴坐标列表
         '''
-        return [square.get_y() for square in self._square_list]
+        return [square.get_y() for square in self.__squares]
 
     def get_left_x(self) -> int:
-        '''获取最左侧点 x 轴坐标值 (x 轴最小值)
+        '''最左侧点 x 轴坐标值 (x 轴最小值)
         '''
         return min(self.get_x_list())
     
     def get_right_x(self) -> int:
-        '''获取最右侧点 x 轴坐标值 (x 轴最大值)
+        '''最右侧点 x 轴坐标值 (x 轴最大值)
         '''
         return max(self.get_x_list())
     
     def get_bottom_y(self) -> int:
-        '''获取最底部点 y 轴坐标值 (y 轴最小值)
+        '''最底部点 y 轴坐标值 (y 轴最小值)
         '''
         return min(self.get_y_list())
 
     def get_top_y(self) -> int:
-        '''获取最顶部点 y 轴坐标值 (y 轴最大值)
+        '''最顶部点 y 轴坐标值 (y 轴最大值)
         '''
         return max(self.get_y_list())
     
     def get_width(self) -> int:
-        '''获取宽度 (dx)
+        '''宽度 (dx)
         '''
         x_list = self.get_x_list()
-        return max(x_list) - min(x_list)
+        return max(x_list) - min(x_list) + 1
     
     def get_width(self) -> int:
-        '''获取高度 (dy)
+        '''高度 (dy)
         '''
         y_list = self.get_y_list()
-        return max(y_list) - min(y_list)
+        return max(y_list) - min(y_list) + 1
 
-    def move(self, dx=0, dy=0) -> 'Piece':
+    def move(self, dx: int, dy: int) -> 'Piece':
         '''移动指定偏移量
-        dx: x轴移动量
-        dy: y轴移动量
         '''
-        for i in range(self.get_square_count()):
-            self._square_list[i].move(dx, dy)
+        for i, backup in enumerate(self.__squares):
+            self.__squares[i].set_point(backup.get_x() + dx, backup.get_y() + dy)
         return self
 
     def clockwise(self) -> 'Piece':
         '''将部件顺时针旋转90度
         '''
-        for i in range(self.get_square_count()):
-            self._square_list[i].clockwise()
+        for i, backup in enumerate(self.__squares):
+            self.__squares[i].set_point(backup.get_y(), -backup.get_x())
         return self
 
     def anti_clockwise(self) -> 'Piece':
         '''将部件逆时针旋转90度
         '''
-        for i in range(self.get_square_count()):
-            self._square_list[i].anti_clockwise()
+        for i, backup in enumerate(self.__squares):
+            self.__squares[i].set_point(-backup.get_y(), backup.get_x())
         return self
