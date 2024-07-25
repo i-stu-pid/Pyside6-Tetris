@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (QWidget)
 # ui
 from .tetris_window_ui import Ui_Form
 
+
 class TetrisWindow(QWidget):
     '''俄罗斯方块 游戏窗口
     '''
@@ -22,8 +23,7 @@ class TetrisWindow(QWidget):
         super().__init__(parent)# 用于访问父类的方法和属性
         self.init_ui()# ui
         self.setWindowTitle('俄罗斯方块')# 标题
-        # self.resize(QGuiApplication.primaryScreen().availableSize() * 3 / 5)# 重设大小 主屏幕3/5
-        self.resize(550, 370)
+        self.resize(QGuiApplication.primaryScreen().availableSize() * 3 / 5)# 重设大小 主屏幕3/5
 
     def init_ui(self) -> None:
         '''ui初始化

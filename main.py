@@ -5,7 +5,7 @@ import sys
 # 导入Qt
 from PySide6.QtWidgets import QApplication, QStyleFactory
 # 导入主窗口
-from tetris_window import TetrisWindow
+from tetris_game import TetrisWindow
 
 # 主程序入口
 if __name__ == '__main__':
