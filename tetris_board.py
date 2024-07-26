@@ -15,7 +15,7 @@ __author__ = 'lihua.tan'
 
 
 # 基础库
-pass
+from typing import overload
 # python自封装库
 from tetris_piece import Shape, TetrisPiece# 游戏部件
 
@@ -37,6 +37,13 @@ class Square(object):
         '''实例化对象的输出信息
         '''
         return f'[shape: {self.__shape}, color: {'#' + hex(self.__color)[2:].upper()}]'
+
+    @overload
+    def set(self, new_square: 'Square') -> None:
+        '''设置
+        '''
+        self.__shape = new_square.__shape
+        self.__color = new_square.__color
 
     def set(self, piece_shape: Shape, square_color: int) -> None:
         '''设置
@@ -85,26 +92,21 @@ class TetrisBoard(object):
         for x in self.__width:
             for y in self.__height:
                 self.clear_square(x, y)
-
-    def get_square(self, x: int, y: int) -> Square:
-        '''获取面板方块所属部件方块信息
+            
+    def clear_square(self, x: int, y: int) -> None:
+        '''清空面板方块
         '''
-        return self.__squares[x][y]
+        self.__squares[y][x].set(Shape._None, 0x00)
 
     def set_square(self, x: int, y: int, piece_shape: Shape, square_color: int) -> None:
         '''设置面板方块
         '''
-        self.__squares[x][y].set(piece_shape, square_color)
+        self.__squares[y][x].set(piece_shape, square_color)
 
-    def clear_square(self, x: int, y: int) -> None:
-        '''清空面板方块
+    def is_square_free(self, x: int, y: int) -> bool:
+        '''面板方块未被使用
         '''
-        self.__squares[x][y].set(Shape._None, 0x00)
-    
-    def is_square_occupied(self, x: int, y: int) -> bool:
-        '''面板方块已被使用
-        '''
-        return self.__squares[x][y].get_shape() != Shape._None
+        return self.__squares[y][x].get_shape() == Shape._None
     
     def is_x_overside(self, x: int) -> bool:
         '''x 坐标越界
@@ -127,6 +129,35 @@ class TetrisBoard(object):
             if self.is_x_overside(target_x) or self.is_y_overside(target_y):
                 return False
             # 方块占用情况
-            if self.is_square_occupied(target_x, target_y):
+            if not self.is_square_free(target_x, target_y):
                 return False
         return True
+    
+    def set_piece(self, piece: TetrisPiece, dx: int, dy: int) -> None:
+        '''绑定部件信息到方块
+        '''
+        for square in piece.get_squares():
+            x = square.get_x() + dx
+            y = -square.get_y() + dy
+            self.set_square(x, y, piece.get_shape(), square.get_color())
+
+    def remove_full_lines(self) -> int:
+        '''清除完整行
+        返回: 本次清除行数
+        '''
+        remove_line_count = 0
+        # 从上到下遍历
+        for curr_height in range((self.__height - 1), -1, -1):
+            # 无空闲方块 -> 完整行
+            if not any(self.is_square_free(x, curr_height) for x in range(self.__width)):
+                # 取上行方块
+                for y in range(curr_height, (self.__height - 1)):
+                    for x in range(self.__width):
+                        self.__squares[y][x] = self.__squares[y + 1][x]
+                # 清最上行
+                for x in range(self.__width):
+                    self.clear_square(x, self.__height - 1)
+                # 移除行数
+                remove_line_count += 1
+        return remove_line_count
+

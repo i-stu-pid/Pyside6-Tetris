@@ -23,7 +23,7 @@ class Ui_Form(object):
     def setupUi(self, Form):
         if not Form.objectName():
             Form.setObjectName(u"Form")
-        Form.resize(1247, 793)
+        Form.resize(781, 527)
         self.horizontalLayout = QHBoxLayout(Form)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.verticalLayout_7 = QVBoxLayout()
@@ -75,6 +75,11 @@ class Ui_Form(object):
         self.pushButton_start.setObjectName(u"pushButton_start")
 
         self.verticalLayout_5.addWidget(self.pushButton_start)
+
+        self.pushButton_recover = QPushButton(Form)
+        self.pushButton_recover.setObjectName(u"pushButton_recover")
+
+        self.verticalLayout_5.addWidget(self.pushButton_recover)
 
         self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
@@ -141,10 +146,10 @@ class Ui_Form(object):
 
         self.verticalLayout_6.addWidget(self.pushButton_pause)
 
-        self.pushButton_quit = QPushButton(Form)
-        self.pushButton_quit.setObjectName(u"pushButton_quit")
+        self.pushButton_end = QPushButton(Form)
+        self.pushButton_end.setObjectName(u"pushButton_end")
 
-        self.verticalLayout_6.addWidget(self.pushButton_quit)
+        self.verticalLayout_6.addWidget(self.pushButton_end)
 
         self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
@@ -171,9 +176,10 @@ class Ui_Form(object):
         self.label_next_piece.setText("")
         self.label_level_tip.setText(QCoreApplication.translate("Form", u"\u7b49\u7ea7", None))
         self.pushButton_start.setText(QCoreApplication.translate("Form", u"\u5f00\u59cb", None))
+        self.pushButton_recover.setText(QCoreApplication.translate("Form", u"\u6062\u590d", None))
         self.label_score_tip.setText(QCoreApplication.translate("Form", u"\u5206\u6570", None))
         self.label_score_removed_lines_tip.setText(QCoreApplication.translate("Form", u"\u5df2\u79fb\u9664\u884c\u6570", None))
         self.pushButton_pause.setText(QCoreApplication.translate("Form", u"\u6682\u505c", None))
-        self.pushButton_quit.setText(QCoreApplication.translate("Form", u"\u9000\u51fa", None))
+        self.pushButton_end.setText(QCoreApplication.translate("Form", u"\u7ed3\u675f", None))
     # retranslateUi
 

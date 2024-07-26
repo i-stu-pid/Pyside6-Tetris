@@ -103,10 +103,6 @@ class TetrisPiece(Piece):
         '''构造
         shape: 指定内置形状
         '''
-        # self.__shape = shape
-        # color = ShapeTable.get_color(shape)
-        # points = ShapeTable.get_points(shape)
-        # super().__init__(color, *points)
         self.__shape = shape
         super().__init__(ShapeTable.get_color(shape), *ShapeTable.get_points(shape))
 
