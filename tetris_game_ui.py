@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLCDNumber,
     QLabel, QPushButton, QSizePolicy, QSpacerItem,
     QVBoxLayout, QWidget)
 
+from tetris_board import TetrisBoard
+
 class Ui_Form(object):
     def setupUi(self, Form):
         if not Form.objectName():
@@ -91,7 +93,7 @@ class Ui_Form(object):
 
         self.horizontalLayout.addLayout(self.verticalLayout_7)
 
-        self.frame_board = QFrame(Form)
+        self.frame_board = TetrisBoard(Form)
         self.frame_board.setObjectName(u"frame_board")
         self.frame_board.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.frame_board.setFrameShape(QFrame.Shape.Panel)

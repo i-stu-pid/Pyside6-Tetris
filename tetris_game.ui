@@ -109,7 +109,7 @@
     </layout>
    </item>
    <item>
-    <widget class="QFrame" name="frame_board">
+    <widget class="TetrisBoard" name="frame_board">
      <property name="focusPolicy">
       <enum>Qt::FocusPolicy::StrongFocus</enum>
      </property>
@@ -204,6 +204,14 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>TetrisBoard</class>
+   <extends>QFrame</extends>
+   <header location="global">tetris_board</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

@@ -5,24 +5,31 @@
 显示部件下落、移动、旋转、堆积、消除
 """
 
-# # Qt
-# from PySide6.QtCore import (Slot)
-# from PySide6.QtGui import (QGuiApplication)
-# from PySide6.QtWidgets import (QWidget)
-# # ui
-# from .tetris_window_ui import Ui_Form
 
 # 基础
 from enum import IntEnum
+from typing import override
 # Qt标准库
-from PySide6.QtCore import (Qt, Signal, QTimer, QRect, QObject)
-from PySide6.QtGui import (QGuiApplication, QPainter, QColor)
-from PySide6.QtWidgets import (QWidget)
+from PySide6.QtCore import (Qt, Signal, Slot, QBasicTimer, QObject)
+from PySide6.QtGui import (QGuiApplication, QPixmap, QPainter, QColor)
+from PySide6.QtWidgets import (QWidget, QMessageBox, QLabel)
 # python自封装
-from tetris_piece import TetrisPiece# 游戏部件
-from tetris_board import TetrisBoard# 游戏部件
+pass
 # Qt自封装库
+from tetris_board import TetrisBoard
+from tetris_piece import TetrisPiece, Shape
 from tetris_game_ui import Ui_Form# ui界面
+
+
+# 部件变换
+class PieceTrans(IntEnum):
+    '''部件变换
+    '''
+    LineDown = 0# 下移一行
+    DropDown = 1# 落至底部
+    LeftShift = 2# 左移
+    RightShift = 3# 右移
+    Rotate = 4# 顺时针旋转
 
 
 # 游戏运行状态
@@ -32,88 +39,95 @@ class GameState(IntEnum):
     End = 0,# 结束
     Run = 1,# 运行
     Pause = 2,# 暂停
-
-
+    
+    
 # 游戏运行
-class GameWork(QObject):
-    '''游戏运行
+class TetrisRun(QObject):
+    '''俄罗斯方块 游戏运行
     '''
     # 信号
-    _next_piece_changed = Signal()# 下一部件更新
-    # _refresh_ui = Signal()# 更新界面
+    _end = Signal()# 结束运行
+    _piece_arrived = Signal(int)# 部件抵达 + 消除行
 
-    def __init__(self) -> None:
+    def __init__(self, board: TetrisBoard, next_piece_label: QLabel, parent=None) -> None:
         '''构造
         '''
-        # 面板
-        self._board = TetrisBoard()
-        # 当前部件
+        super().__init__(parent)# 访问父类的方法和属性
+        # 部件
         self._curr_piece = TetrisPiece()
-        self._curr_x = 0# 部件底部中点坐标
-        self._curr_y = 0
-        # 下一部件
         self._next_piece = TetrisPiece()
-        self.update_next_piece()
+        self._next_piece.set_random_shape()
+        self._next_piece_label = next_piece_label
+        # 面板
+        self._board = board
+
+    def __repr__(self) -> str:
+        '''实例化对象的输出信息
+        '''
+        return f'[curr_shape: {int(self._curr_piece.get_shape())}, next_shape: {int(self._next_piece.get_shape())}]'
 
     def clear_board(self) -> None:
-        '''清空面板
+        '''清面板
         '''
-        self._board.clear()
+        self._board.clear_all()
 
-    def update_next_piece(self) -> None:
-        '''更新下一部件
-        '''
-        self._next_piece.set_random_shape()
-        self._next_piece_changed.emit()# 下一部件更新
-
-    def update_curr_piece(self) -> bool:
-        '''更新当前部件
+    def get_new_piece(self) -> None:
+        '''更新部件
         '''
         # 当前部件
-        self._curr_piece = self._next_piece
-        self._curr_x = (self._board.get_width() // 2) + 1# 部件底部中点坐标
-        self._curr_y = (self._board.get_height() - 1) + self._curr_piece.get_bottom_y()
-        # 不可放置
-        if not self._board.is_piece_setable(self._curr_piece, self._curr_x, self._curr_y):
-            return False
+        self._curr_piece = self._next_piece.transfer(0, -(1 + self._next_piece.get_top_y()))# 确保整个进入
+        self._board.set_draw_piece(self._curr_piece)
+        if not self._board.is_piece_setable(self._curr_piece):
+            self._curr_piece.set_shape(Shape._None)
+            self._board.set_draw_piece(None)
+            self._end.emit()# 结束运行
         # 下一部件
-        self.update_next_piece()
-        return True
+        self._next_piece.set_random_shape()
 
-    def move_curr_piece(self, dx: int, dy: int) -> bool:
-        '''移动当前部件
-        dx, dy: 移动偏移量
+    def try_transfer(self, transfer: PieceTrans) -> bool:
+        '''部件变换
         '''
-        # 不能上移
-        if dy > 0:
-            raise ValueError from GameWork
-        # 新位置
-        target_x = self._curr_x + dx
-        target_y = self._curr_x + dy
-        # 不可放置
-        if not self._board.is_piece_setable(self._curr_piece, target_x, target_y):
+        # 下移一行
+        if transfer == PieceTrans.LineDown:
+            new_piece = self._curr_piece.transfer(0, -1)
+        # 落至底部
+        elif transfer == PieceTrans.DropDown:
+            new_piece = self._curr_piece.transfer(0, -1)
+            while self._board.is_piece_setable(new_piece):
+                new_piece = new_piece.transfer(0, -1)
+            self._curr_piece = new_piece.transfer(0, 1)
+        # 左移
+        elif transfer == PieceTrans.LeftShift:
+            new_piece = self._curr_piece.transfer(-1, 0)
+        # 右移
+        elif transfer == PieceTrans.RightShift:
+            new_piece = self._curr_piece.transfer(1, 0)
+        # 顺时针旋转90度
+        elif transfer == PieceTrans.Rotate:
+            new_piece = self._curr_piece.transfer(rotate=90)
+        # 尝试放置部件
+        if not self._board.is_piece_setable(new_piece):
+            if transfer in [PieceTrans.LineDown, PieceTrans.DropDown]:
+                self.piece_arrived()# 部件抵达
             return False
-        # 更新
-        self._curr_x = target_x
-        self._curr_y = target_y
-        return True
-
-    def rotate_curr_piece(self) -> bool:
-        '''旋转当前部件
-        '''
-        # 新部件
-        new_piece = self._curr_piece.clockwise()
-        # 不可放置
-        if not self._board.is_piece_setable(new_piece, self._curr_x, self._curr_y):
-            return False
-        # 更新
         self._curr_piece = new_piece
+        self._board.set_draw_piece(new_piece)
         return True
 
-    def set_curr_piece_to_borad(self) -> None:
-        '''部件抵达, 设置到面板
-        '''
-        self._board.set_piece(self._curr_piece, self._curr_x, self._curr_y)
+    def piece_arrived(self) -> None:
+        '''部件抵达面板底部/触碰到累积部件方块
+        ''' 
+        # 放置部件
+        self._board.set_occupy_piece(self._curr_piece)
+        # 消除整行
+        remove_lines = self._board.remove_full_lines()
+        if remove_lines:
+            self._curr_piece.set_shape(Shape._None)
+            self._board.set_draw_piece(None)
+        else:
+            self.get_new_piece()
+        # 部件抵达
+        self._piece_arrived.emit(remove_lines)
 
 
 # 游戏运行
@@ -125,8 +139,9 @@ class TetrisGame(QWidget):
         '''
         super().__init__(parent)# 访问父类的方法和属性
         self.__init_ui()# 界面
-        self.__init_param()# 参数
-        self.__init_work()# 运行
+        self.__init_data()# 数据
+        self.__init_state()# 状态
+        self.__init_run(self.__ui.frame_board)# 运行
 
     def __init_ui(self) -> None:
         '''界面
@@ -134,249 +149,148 @@ class TetrisGame(QWidget):
         self.__ui = Ui_Form()
         self.__ui.setupUi(self)
         self.setWindowTitle('俄罗斯方块')# 标题
-        self.resize(QGuiApplication.primaryScreen().availableSize() * 3 / 5)# 重设大小 主屏幕3/5
+        self.resize(600, 500)
 
-    def __init_param(self) -> None:
-        '''参数
+    def __init_data(self) -> None:
+        '''数据
         '''
         self._score = 0# 分数
         self._level = 1# 等级
         self._lines_removed = 0# 累计移除行数
         self._pieces_dropped = 0# 累计下落部件
 
-    def display_param(self) -> None:
-        '''显示参数
+    def display_data(self) -> None:
+        '''显示数据
         '''
         self.__ui.lcdNumber_score.display(self._score)# 分数
         self.__ui.lcdNumber_level.display(self._level)# 等级
         self.__ui.lcdNumber_removed_lines.display(self._lines_removed)# 累计移除行数
 
-    def __init_work(self) -> None:
-        '''运行
+    @Slot(int)# 槽
+    def update_data(self, remove_lines: int) -> None:
+        '''更新数据
         '''
-        self._work = GameWork()
-        # 状态
+        # 放置部件
+        self._score += 1# 分数
+        self._pieces_dropped += 1# 累计下落部件
+        if self._pieces_dropped % 25 == 0:
+            self._level += 1# 等级
+            self.set_timer_start(True)#启动定时
+        # 消除整行
+        if remove_lines:
+            self._score += 10 * remove_lines# 分数
+            self._lines_removed += remove_lines# 累计移除行数
+            self._is_wait_remove_done = True# 等待移除界面刷新
+            self.set_timer_start(True, 500)#启动定时
+        # 显示数据
+        self.display_data()
+
+    def __init_state(self) -> None:
+        '''状态
+        '''
         self._state = GameState.End
         self.__ui.pushButton_start.clicked.connect(self.start)# 开始
-        self.__ui.pushButton_recover.clicked.connect(self.recover)# 恢复
+        self.__ui.pushButton_recover.clicked.connect(self.start)# 恢复
         self.__ui.pushButton_pause.clicked.connect(self.pause)# 暂停
         self.__ui.pushButton_end.clicked.connect(self.end)# 结束
-        # 定时器
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self.timeout_to_move_piece_down)
 
-    def start_timer_to_move_piece(self, time_ms: int = -1) -> None:
-        '''定时移动部件下落
-        time: 定时时间 ms (<=0, 根据等级设置; 其他, 指定值)
-        '''
-        if time_ms <= 0:
-            time_ms = 1000 / (1 + self._level)
-        self._timer.start(time_ms)
-
-    def stop_timer_to_move_piece(self) -> None:
-        '''停止移动部件
-        '''
-        self._timer.stop()
-
-    def timeout_to_move_piece_down(self) -> None:
-        '''定时移动部件下落
-        '''
-        # 无法下落, 则已抵达
-        if not self._work.move_curr_piece(0, -1):# 下落
-            # 设置部件
-            self._work.set_curr_piece_to_borad()
-            self._score += 1# 分数
-            self._pieces_dropped += 1# 累计下落部件
-            if self._pieces_dropped % 25 == 0:
-                self._level += 1
-                self.start_timer_to_move_piece()
-            # 移除完整行
-            remove_count = self._work._board.remove_full_lines()
-            if remove_count:
-                self._score += remove_count * self._work._board.get_width()# 分数
-                self._lines_removed += remove_count# 累计移除行数
-                self.start_timer_to_move_piece(500)
-            # 更新部件
-            self._work.update_curr_piece()
-            self._work.update_next_piece()
-        # 显示参数
-        self.display_param()
-
+    @Slot()# 槽
     def start(self) -> None:
         '''开始游戏
         '''
-        if self._state == GameState.End:# 必须在结束状态
-            # 参数
-            self.__init_param()# 重置参数
-            # 界面
-            self._work.clear_board()# 清空面板
-            self._work.update_curr_piece()# 更新部件
-            self._work.update_next_piece()
-            # 启动
-            self._state = GameState.Run# 更新状态
-            self.start_timer_to_move_piece()# 定时移动部件
- 
+        # 开始
+        if self._state == GameState.End:
+            self.__init_data()# 数据
+            self._run.clear_board()# 面板
+            self._run.get_new_piece()# 部件
+            self._state = GameState.Run# 状态
+            self._is_wait_remove_done = False
+            self.display_data()# 显示数据
+            self.update()
+        # 恢复
+        elif self._state == GameState.Pause:
+            self._state = GameState.Run# 状态
+        # 定时器
+        self.set_timer_start(True)
+
+    @Slot()# 槽
     def pause(self) -> None:
         '''暂停游戏
         '''
         if self._state == GameState.Run:# 必须在运行状态
-            self._state = GameState.Pause# 更新状态
-            self.stop_timer_to_move_piece()# 停止刷新
+            self.set_timer_start(False)# 定时器
+            QMessageBox.information(self, '提示', '游戏暂停')
+            self._state = GameState.Pause# 状态
             self.update()# 更新界面
 
-    def recover(self) -> None:
-        '''恢复游戏
-        '''
-        if self._state != GameState.Pause:# 必须在暂停状态
-            self._state = GameState.Run# 更新状态
-            self.start_timer_to_move_piece()# 定时移动部件
-            self.update()# 更新界面
-
+    @Slot()# 槽
     def end(self) -> None:
         '''结束游戏
         '''
-        if self._state != GameState.Pause:# 必须在暂停状态
-            self._state = GameState.End# 更新状态
-            self.stop_timer_to_move_piece()# 停止刷新
-            self.update()# 更新界面
+        self.set_timer_start(False)# 定时器
+        QMessageBox.information(self, '提示', '游戏结束')
+        self._state = GameState.End# 状态
+        self.update()# 更新界面
 
-    def draw_square(self, painter: QPainter, x: int, y: int, square: Square):
-        '''绘制方块
-        painter: 绘图工具
-        x: 绘制窗口左上顶点 x 坐标
-        y: 绘制窗口左上顶点 y 坐标
-        square: 方块
+    def __init_run(self, board: TetrisBoard) -> None:
+        '''运行
         '''
-        # 方块
-        square_width = self.contentsRect().width() / self._board.get_width()
-        square_height = self.contentsRect().height() / self._board.get_height()
-        square_rect = QRect(x, y, square_width, square_height)
-        # 内部填充
-        square_color = QColor(square.get_color())
-        painter.fillRect(x + 1, y + 1, square_width - 2, square_height - 2, square_color)
-        # 左上角的两条边框
-        painter.setPen(square_color.lighter())
-        painter.drawLine(square_rect.topLeft(), square_rect.topRight())
-        painter.drawLine(square_rect.topLeft(), square_rect.bottomLeft())
-        # 右下角的两条边框
-        painter.setPen(square_color.darker())
-        painter.drawLine(square_rect.bottomRight(), square_rect.topRight())
-        painter.drawLine(square_rect.bottomRight(), square_rect.bottomLeft())
+        # 运行
+        self._run = TetrisRun(board, self)
+        self._run._end.connect(self.end)# 结束
+        self._run._piece_arrived.connect(self.update_data)# 更新数据
+        # 定时器
+        self._timer = QBasicTimer()
+        self._is_wait_remove_done = False# 等待移除界面刷新
 
-    def paintEvent(self, event):
-        '''界面绘制事件
+    def set_timer_start(self, enable: bool, time_ms=-1) -> None:
+        '''定时设置
         '''
-        super(QtTetrisBoard, self).paintEvent(event)
+        if not enable:
+            self._timer.stop()
+            return None
+        if time_ms == -1:
+            time_ms = 1000 / (1 + self._level)
+        self._timer.start(time_ms, self)
 
-        with QPainter(self) as painter:
-            rect = self.contentsRect()
+    @Slot()# 槽
+    def timerEvent(self, event) -> None:
+        '''定时移动部件
+        '''
+        if event.timerId() != self._timer.timerId():
+            super(TetrisGame, self).timerEvent(event)
+            return None
+        if not self._is_wait_remove_done:
+            if not self._run.try_transfer(PieceTrans.LineDown):
+                return None
+        else:# 等待移除界面刷新
+            self._is_wait_remove_done = False
+            self._run.get_new_piece()
+        self.update()# 更新显示
+        self.set_timer_start(True)
 
-            if self._state == GameState.Pause:
-                rect.setSize(rect.size() * (1 / 5))
-                '''
-                center = rect.center()
-                rect.setSize(rect.size() * (1 / 5))
-                rect.moveCenter(center)
-                '''
-                painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Pause")
-                return
-
-
-# class TetrisWindow(QWidget):
-#     '''俄罗斯方块 游戏窗口
-#     '''
-#     def __init__(self, parent=None) -> None:
-#         '''初始化
-#         '''
-#         super().__init__(parent)# 用于访问父类的方法和属性
-#         self.init_ui()# ui
-#         self.setWindowTitle('俄罗斯方块')# 标题
-#         self.resize(QGuiApplication.primaryScreen().availableSize() * 3 / 5)# 重设大小 主屏幕3/5
-
-#     def init_ui(self) -> None:
-#         '''ui初始化
-#         '''
-#         self.__ui = Ui_Form()
-#         self.__ui.setupUi(self)
-
-
-# # 文件
-# import common.file_control as file_control# 文件通用
-# import common.config_control as config_control# 配置文件
-# # Qt
-# import common.qt_message_box as message_box
-# from PySide6.QtCore import (Qt, Slot)
-# from PySide6.QtGui import (QGuiApplication, QCloseEvent, QKeyEvent, QDragEnterEvent, QDropEvent)
-# from PySide6.QtWidgets import (QMainwindow)
-# # ui
-# from .main_window_ui import Ui_MainWindow
-
-# # 自定义一个窗口类 便于主程序入口调用
-# class Mainwindow(QMainwindow):
-    # def __init__(self, parent=None) -> None:
-    #     '''初始化
-    #     '''
-    #     super().__init__(parent)# 用于访问父类的方法和属性
-    #     self.init_ui()# ui
-    #     self.init_font()# 字体
-    #     self.setWindowTitle('合并图片到PDF')# 标题
-    #     self.resize(QGuiApplication.primaryScreen().availableSize() * 3 / 5)# 重设大小 主屏幕3/5
-    #     config_control.init()# 初始化配置
-
-    # def init_font(self) -> None:
-    #     '''字体
-    #     '''
-    #     font = self.font()
-    #     font.setFamily('Courier New')# 字体 ("宋体")
-    #     font.setPointSize(10)# 大小
-    #     self.setFont(font)
-
-    # def init_ui(self) -> None:
-    #     '''ui
-    #     '''
-    #     self.__ui = Ui_MainWindow()
-    #     self.__ui.setupUi(self)
-    #     # 图片预览列表
-    #     self._image_list = self.__ui.widget_image_list
-    #     # 图片查看器
-    #     self._image_viewer = self.__ui.widget_image_viewer
-    #     # 信号
-    #     self._image_list._image_selected.connect(self._image_viewer.set_image)# 设置图片
-    #     self._image_list._image_cleared.connect(self._image_viewer.clear_image)# 清除图片
-    #     self._image_viewer._image_changed.connect(self._image_list.reload_image)# 重载图片
-    #     self._image_viewer._image_info_changed.connect(self.status_bar_show_message)# 图片信息改变
-
-    # def closeEvent(self, event: QCloseEvent):
-    #     '''关闭事件
-    #     '''
-    #     config_control.save()# 保存配置
-        
-    # def keyReleaseEvent(self, event: QKeyEvent):
-    #     '''按键释放
-    #     '''
-    #     key = event.key()
-    #     if key == Qt.Key.Key_Left or key == Qt.Key.Key_Up:
-    #         self._image_list.select_prev_page()# 上一页
-    #     elif key == Qt.Key.Key_Right or key == Qt.Key.Key_Down:
-    #         self._image_list.select_next_page()# 下一页
-
-    # def dragEnterEvent(self, event: QDragEnterEvent) -> None:
-    #     '''拖拽进入事件
-    #     '''
-    #     # 有资源进入，必须先接收此事件，才能响应后续的dropEvent
-    #     event.accept() if event.mimeData().hasUrls() else event.ignore()
-
-    # def dropEvent(self, event: QDropEvent) -> None:
-    #     '''拖拽释放事件
-    #     '''
-    #     local_files = [url.toLocalFile() for url in event.mimeData().urls()]# url 转 路径
-    #     image_files = [file for file in local_files if file_control.check_suffix(file, 'picture', True)]# 筛选图片项
-    #     self._image_list.append_images(image_files)# 添加图片
-    #     if len(image_files) != len(local_files):
-    #         message_box.auto_info('已剔除非图片文件')
-
-    # @Slot(str)
-    # def status_bar_show_message(self, message: str) -> None:
-    #     '''底部状态栏 显示消息
-    #     '''
-    #     self.statusBar().showMessage(message)
+    @override# 重写
+    def keyPressEvent(self, event):
+        '''按键按下事件
+        '''
+        # 键值
+        transfer = None
+        if self._state == GameState.Run and self._run._curr_piece.get_shape() != Shape._None:
+            key = event.key()
+            if key == Qt.Key.Key_Left:# 左移
+                transfer = PieceTrans.LeftShift
+            elif key == Qt.Key.Key_Right:# 右移
+                transfer = PieceTrans.RightShift
+            elif key == Qt.Key.Key_Down:# 落至底部
+                transfer = PieceTrans.DropDown
+                self.set_timer_start(False)
+            elif key == Qt.Key.Key_Up:# 顺时针旋转90度
+                transfer = PieceTrans.Rotate
+        # 转换
+        if transfer:
+            self._run.try_transfer(transfer)
+            if transfer == PieceTrans.DropDown:
+                self.set_timer_start(True)#启动定时
+            self.update()# 更新显示
+        else:
+            super(TetrisGame, self).keyPressEvent(event)
