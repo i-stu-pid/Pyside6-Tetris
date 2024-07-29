@@ -10,14 +10,14 @@
 from enum import IntEnum
 from typing import override
 # Qt标准库
-from PySide6.QtCore import (Qt, Slot, QBasicTimer, QTimerEvent, QEvent, QObject)
-from PySide6.QtGui import (QKeyEvent)
-from PySide6.QtWidgets import (QWidget, QMessageBox, QLabel)
+from PySide6.QtCore import (Qt, Slot, QBasicTimer, QTimerEvent, QEvent, QObject, QRect)
+from PySide6.QtGui import (QKeyEvent, QPainter, QColor, QPalette)
+from PySide6.QtWidgets import (QWidget, QMessageBox)
 # python自封装
 pass
 # Qt自封装库
-from tetris_board import TetrisBoard
-from tetris_piece import TetrisPiece, Shape
+# from tetris_board import TetrisBoard# 游戏面板
+from tetris_piece import TetrisPiece, Shape# 游戏部件
 from tetris_game_ui import Ui_Form# ui界面
 
 
@@ -39,18 +39,12 @@ class GameState(IntEnum):
     End = 0,# 结束
     Run = 1,# 运行
     Pause = 2,# 暂停
-    
-    
+
+
 # 游戏运行
 class TetrisGame(QWidget):
     '''俄罗斯方块 游戏运行
     '''
-    # def eventFilter(self, watched: QObject, event: QEvent) -> bool:
-    #     '''构造
-    #     '''
-    #     if event.type() == QEvent.Type.Paint:
-    #         if watched == self.__ui.label_next_piece:
-
     def __init__(self, parent=None) -> None:
         '''构造
         '''
@@ -60,6 +54,7 @@ class TetrisGame(QWidget):
         self.__init_state()# 状态
         self.__init_run()# 运行
         self.set_widget_size()# 窗口大小
+        self.__ui.label_next_piece.installEventFilter(self)
 
     def __init_ui(self) -> None:
         '''界面
@@ -288,3 +283,46 @@ class TetrisGame(QWidget):
             self.get_new_piece()
             self.set_timer_start(True)#启动定时
             self.update()
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        '''事件监控器
+        '''
+        # 绘制事件
+        if event.type() == QEvent.Type.Paint:
+            # 下一部件 (绘制有效下一部件)
+            if watched == self.__ui.label_next_piece and self._next_piece.get_shape() != Shape._None:
+                next_piece_label = self.__ui.label_next_piece
+                draw_piece = self._next_piece.transfer(flip_vertical=True)
+                label_rect = self.__ui.label_next_piece.rect()
+                square_size = min(label_rect.width() / draw_piece.get_width(), label_rect.height() / draw_piece.get_height())
+                square_size *= (3 / 7)
+                label_rect_top = (label_rect.height() - draw_piece.get_height() * square_size) / 2
+                label_rect_left = (label_rect.width() - draw_piece.get_width() * square_size) / 2
+                with QPainter(next_piece_label) as painter:
+                    painter.fillRect(label_rect, next_piece_label.palette().color(QPalette.ColorRole.Window))
+                    for square in draw_piece.get_squares():
+                        left = label_rect_left + (square._x - draw_piece.get_left_x()) * square_size
+                        top = label_rect_top + (square._y - draw_piece.get_bottom_y()) * square_size
+                        square_rect = QRect(left, top, square_size, square_size)
+                        self.draw_square(painter, square_rect, square._color)
+        return super(TetrisGame, self).eventFilter(watched, event)
+
+    def draw_square(self, painter: QPainter, square_rect: QRect, color: int) -> None:
+        '''绘制方块
+        painter: 绘图工具
+        square_rect: 要绘制的方块窗口矩阵
+        '''
+        # 内部填充
+        square_rect.adjust(1, 1, -1, -1)# 调整: 左上角 (-1, -1) 向内收缩 1, 右下角 (1, 1) 向内收缩 1
+        square_color = QColor(color)
+        painter.fillRect(square_rect, square_color)
+        # 左上角的两条边框
+        square_rect.adjust(-1, -1, 1, 1)# 恢复
+        painter.setPen(square_color.lighter())
+        painter.drawLine(square_rect.topLeft(), square_rect.topRight())
+        painter.drawLine(square_rect.topLeft(), square_rect.bottomLeft())
+        # 右下角的两条边框
+        painter.setPen(square_color.darker())
+        painter.drawLine(square_rect.bottomRight(), square_rect.topRight())
+        painter.drawLine(square_rect.bottomRight(), square_rect.bottomLeft())
+

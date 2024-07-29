@@ -142,6 +142,16 @@ class PieceSquare(object):
             self._x = self._y
             self._y = -backup_x
 
+    def flip_vertical(self) -> None:
+        '''垂直镜像
+        '''
+        self._y = -self._y
+
+    def flip_horizontal(self) -> None:
+        '''水平镜像
+        '''
+        self._x = -self._x
+
 
 # 游戏部件
 class TetrisPiece(object):
@@ -152,7 +162,7 @@ class TetrisPiece(object):
     '''
     __shape = None# 形状
     __square_list = None# 方块信息列表
-    __transfer = [0, 0, 0]# 变换 (dx, dy, angle)
+    __transfer = [0, 0, 0, False, False]# 变换 (dx, dy, angle, flip_horizontal, flip_vertical)
 
     def __init__(self, shape=Shape._None) -> None:
         '''构造
@@ -176,7 +186,7 @@ class TetrisPiece(object):
         points = ShapeTable.get_points(shape)
         self.__square_list = [PieceSquare(point[0], point[1], color) for point in points]
         # 变换
-        self.__transfer = [0, 0, 0]# 变换 (dx, dy, angle)
+        self.__transfer = [0, 0, 0, False, False]# 变换 (dx, dy, angle, flip_horizontal, flip_vertical)
 
     def __repr__(self) -> str:
         '''实例化对象的输出信息 (详细)
@@ -193,7 +203,7 @@ class TetrisPiece(object):
             self.__square_list.clear()
         self.__square_list = None
         # 变换
-        self.__transfer = [0, 0, 0]# 变换 (dx, dy, angle)
+        self.__transfer = [0, 0, 0, False, False]# 变换 (dx, dy, angle, flip_horizontal, flip_vertical)
 
     def set_random_shape(self) -> None:
         '''随机设置形状
@@ -263,7 +273,7 @@ class TetrisPiece(object):
         y_list = self.get_y_list()
         return max(y_list) - min(y_list) + 1
     
-    def transfer(self, dx: int = 0, dy: int = 0, angle: int = 0) -> 'TetrisPiece':
+    def transfer(self, dx: int = 0, dy: int = 0, angle: int = 0, flip_horizontal: bool = False, flip_vertical: bool = False) -> 'TetrisPiece':
         '''变换
         '''
         if self.__shape == Shape._None:
@@ -277,10 +287,17 @@ class TetrisPiece(object):
         if angle % 90 != 0:
             raise ValueError from TetrisPiece
         angle = (angle + self.__transfer[2]) % 360
+        # 镜像
+        flip_horizontal = (not self.__transfer[3]) if flip_horizontal else self.__transfer[3]
+        flip_vertical = (not self.__transfer[4]) if flip_vertical else self.__transfer[4]
         # 变换
-        result.__transfer = [dx, dy, angle]
+        result.__transfer = [dx, dy, angle, flip_horizontal, flip_vertical]
         for i in range(len(result.__square_list)):
             square = result.__square_list[i]
+            if flip_horizontal:
+                square.flip_horizontal()# 水平镜像
+            if flip_vertical:
+                square.flip_vertical()# 垂直镜像
             square.rotate(angle)# 旋转
             square.move(dx, dy)# 移动
         return result

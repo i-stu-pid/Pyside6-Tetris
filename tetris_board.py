@@ -18,14 +18,13 @@ __author__ = 'lihua.tan'
 import copy
 from typing import override
 # Qt标准库
-from PySide6.QtCore import (Qt, QRect, QLine)
+from PySide6.QtCore import (Qt, QRect)
 from PySide6.QtGui import (QPainter, QColor, QPen)
 from PySide6.QtWidgets import (QFrame)
 # python自封装
-from tetris_piece import (Shape, PieceSquare, TetrisPiece)
+from tetris_piece import (Shape, PieceSquare, TetrisPiece)# 游戏部件
 # Qt自封装库
 pass
-import time
 
 
 # 面板方块
@@ -94,7 +93,7 @@ class TetrisBoard(QFrame):
         """界面
         """
         self.setFrameStyle(QFrame.Shape.Panel | QFrame.Shadow.Sunken)# 风格
-        # self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)# 焦点策略
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)# 焦点策略
 
     def __repr__(self) -> str:
         '''实例化对象的输出信息
