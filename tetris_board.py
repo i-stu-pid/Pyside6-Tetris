@@ -15,15 +15,17 @@ __author__ = 'lihua.tan'
 
 
 # 基础
+import copy
 from typing import override
 # Qt标准库
-from PySide6.QtCore import (Qt, QRect)
+from PySide6.QtCore import (Qt, QRect, QLine)
 from PySide6.QtGui import (QPainter, QColor, QPen)
 from PySide6.QtWidgets import (QFrame)
 # python自封装
 from tetris_piece import (Shape, PieceSquare, TetrisPiece)
 # Qt自封装库
 pass
+import time
 
 
 # 面板方块
@@ -42,7 +44,8 @@ class BoardSquare(object):
     def __repr__(self) -> str:
         '''实例化对象的输出信息
         '''
-        return f'[shape: {self._shape}, color: {"#" + hex(self._color)[2:].upper()}]'
+        # return f'[shape: {self._shape}, color: {"#" + hex(self._color)[2:].upper()}]'
+        return f'[{self._shape}]'
 
     def set_to_occupied(self, piece_shape: Shape, square_color: int) -> None:
         '''设置为占用状态
@@ -76,15 +79,16 @@ class TetrisBoard(QFrame):
     _row_count = 22# 行方块数
     _col_count = 10# 列方块数
     _mid_col = _col_count // 2# 中间位置
+    _square_table = None# 方块表
+    _draw_piece = None# 临时绘制部件
 
     def __init__(self, parent=None, row_count=22, col_count=10) -> None:
         """构造
         """
         super().__init__(parent)# 访问父类的方法和属性
         self.__init_ui()# 界面
-        self._square_table = None# 方块表
-        self._draw_piece = None# 临时绘制部件
         self.reset_size(row_count, col_count)# 面板大小
+        self._draw_piece = None# 临时绘制部件
 
     def __init_ui(self) -> None:
         """界面
@@ -125,15 +129,10 @@ class TetrisBoard(QFrame):
         col = piece_square._x + TetrisBoard._mid_col
         return [row, col]
     
-    def is_valid_row(self, row: int) -> bool:
-        """有效行索引
-        """
-        return not (row < 0 or row >= TetrisBoard._row_count)
-    
-    def is_valid_col(self, col: int) -> bool:
-        """有效列索引
-        """
-        return not (col < 0 or col >= TetrisBoard._col_count)
+    def is_valid_pos(self, row: int, col: int) -> bool:
+        '''有效坐标
+        '''
+        return not ((row < 0 or row >= TetrisBoard._row_count) or (col < 0 or col >= TetrisBoard._col_count))
 
     def is_piece_setable(self, piece: TetrisPiece) -> bool:
         """是否可放置部件到面板
@@ -145,12 +144,22 @@ class TetrisBoard(QFrame):
             # 目标位置
             row, col = self.convert_piece_pos(piece_square)
             # 检查越界
-            if not (self.is_valid_row(row) and self.is_valid_col(col)):
+            if not self.is_valid_pos(row, col):
                 return False
             # 检查占用
             if not self._square_table[row][col].is_free():
                 return False
         return True
+    
+    def is_all_occupied(self, row: int) -> bool:
+        '''整行被占用
+        '''
+        return not any(self._square_table[row][col].is_free() for col in range(TetrisBoard._col_count))
+    
+    def is_all_free(self, row: int) -> bool:
+        '''整行空闲
+        '''
+        return all(self._square_table[row][col].is_free() for col in range(TetrisBoard._col_count))
 
     def set_occupy_piece(self, piece: TetrisPiece) -> None:
         """放置部件到面板 (标记占用)
@@ -166,22 +175,26 @@ class TetrisBoard(QFrame):
         '''清除面板中的所有完整行
         return: 本次清除行数
         '''
-        remove_line_count = 0
+        # 取首个占用行
+        valid_top_row = TetrisBoard._row_count - 1
+        while valid_top_row >= 0 and self.is_all_free(valid_top_row):
+            valid_top_row -= 1
         # 从顶部往底部遍历
-        top_row = TetrisBoard._row_count - 1
-        for curr_row in range(top_row, -1, -1):
+        remove_count = 0
+        for curr_row in range(valid_top_row, -1, -1):
             # 无空闲方块则为完整行
-            if not any(self._square_table[curr_row][col].is_free() for col in range(TetrisBoard._col_count)):
+            if self.is_all_occupied(curr_row):
                 # 取上行方块
-                for row in range(curr_row, top_row):
-                    for col in range(TetrisBoard._col_count):
-                        self._square_table[row][col] = self._square_table[row + 1][col]
+                for row in range(curr_row, valid_top_row, 1):
+                    self._square_table[row] = copy.deepcopy(self._square_table[row + 1])
                 # 清最上行
                 for col in range(TetrisBoard._col_count):
-                    self._square_table[top_row][col].release_to_free()
+                    self._square_table[valid_top_row][col].release_to_free()
                 # 移除行数
-                remove_line_count += 1
-        return remove_line_count
+                remove_count += 1
+                valid_top_row -= 1
+                self.update()
+        return remove_count
 
     def set_draw_piece(self, piece: TetrisPiece):
         '''设置临时绘制部件
@@ -189,7 +202,7 @@ class TetrisBoard(QFrame):
         '''
         self._draw_piece = piece
 
-    def get_draw_rect(self) -> list[QRect, int, int]:
+    def get_board_rect(self) -> list[QRect, int, int]:
         '''绘制矩阵
         board_rect: 面板窗口矩阵
         '''
@@ -198,30 +211,36 @@ class TetrisBoard(QFrame):
         # 方块大小
         square_width = board_rect.width() / TetrisBoard._col_count
         square_height = board_rect.height() / TetrisBoard._row_count
-        # 更新
-        board_rect.setTop(board_rect.bottom() - TetrisBoard._row_count * square_height)
+        # 调整
+        dx = board_rect.top() - (board_rect.bottom() - (TetrisBoard._row_count * square_height))
+        board_rect.adjust(dx, 0, 0, 0)
         return [board_rect, square_width, square_height]
 
-    def draw_square(self, painter: QPainter, square_pos: list[int], color: int) -> None:
+    def get_square_rect(self, board_row: int, board_col: int) -> QRect:
+        '''绘制方块
+        board_row, board_col: 要绘制的面板方块索引
+        '''
+        if not self.is_valid_pos(board_row, board_col):
+            return QRect()
+        # 绘制矩阵
+        board_rect, square_width, square_height = self.get_board_rect()
+        # 方块左上角像素坐标
+        square_top_left_x = board_rect.left() + board_col * square_width
+        square_top_left_y = board_rect.top() + (TetrisBoard._row_count - 1 - board_row) * square_height
+        # 方块窗口
+        return QRect(square_top_left_x, square_top_left_y, square_width, square_height)
+
+    def draw_square(self, painter: QPainter, square_rect: QRect, color: int) -> None:
         '''绘制方块
         painter: 绘图工具
-        row, col: 要绘制的面板方块索引
+        square_rect: 要绘制的方块窗口矩阵
         '''
-        # 方块索引
-        row, col = square_pos
-        if not (self.is_valid_row(row) and self.is_valid_col(col)):
-            return None
-        # 绘制矩阵
-        board_rect, square_width, square_height = self.get_draw_rect()
-        # 方块左上角像素坐标
-        square_top_left_x = board_rect.left() + col * square_width
-        square_top_left_y = board_rect.top() + (TetrisBoard._row_count - 1 - row) * square_height
-        # 方块窗口
-        square_rect = QRect(square_top_left_x, square_top_left_y, square_width, square_height)
         # 内部填充
+        square_rect.adjust(1, 1, -1, -1)# 调整: 左上角 (-1, -1) 向内收缩 1, 右下角 (1, 1) 向内收缩 1
         square_color = QColor(color)
-        painter.fillRect(square_top_left_x + 1, square_top_left_y + 1, square_width - 2, square_height - 2, square_color)
+        painter.fillRect(square_rect, square_color)
         # 左上角的两条边框
+        square_rect.adjust(-1, -1, 1, 1)# 恢复
         painter.setPen(square_color.lighter())
         painter.drawLine(square_rect.topLeft(), square_rect.topRight())
         painter.drawLine(square_rect.topLeft(), square_rect.bottomLeft())
@@ -234,19 +253,19 @@ class TetrisBoard(QFrame):
         '''绘制格子
         '''
         # 画笔
-        pen = QPen(Qt.PenStyle.DotLine)
+        pen = QPen(Qt.PenStyle.DotLine)# 虚线
         pen.setColor(QColor(Qt.GlobalColor.darkGray).lighter())
         painter.setPen(pen)
         # 绘制矩阵
-        board_rect, square_width, square_height = self.get_draw_rect()
+        board_rect, square_width, square_height = self.get_board_rect()
+        x = board_rect.left()
+        y = board_rect.top()
         # 横线
         for row in range(1, TetrisBoard._row_count):
-            y = board_rect.top() + row * square_height
-            painter.drawLine(board_rect.left(), y, board_rect.right(), y)
+            painter.drawLine(x, y + row * square_height, x + board_rect.width(), y + row * square_height)
         # 竖线
         for col in range(1, TetrisBoard._col_count):
-            x = board_rect.left() + col * square_width
-            painter.drawLine(x, board_rect.top(), x, board_rect.top() + board_rect.height())
+            painter.drawLine(x + col * square_width, y, x + col * square_width, y + board_rect.height())
 
     @override# 重写
     def paintEvent(self, event) -> None:
@@ -258,11 +277,11 @@ class TetrisBoard(QFrame):
             for row in range(TetrisBoard._row_count):
                 for col in range(TetrisBoard._col_count):
                     if not self._square_table[row][col].is_free():
-                        self.draw_square(painter, [row, col], self._square_table[row][col]._color)
+                        self.draw_square(painter, self.get_square_rect(row, col), self._square_table[row][col]._color)
             # 绘制当前操作部件
             if self._draw_piece and self._draw_piece.get_shape() != Shape._None:
                 for piece_square in self._draw_piece.get_squares():
                     row, col = self.convert_piece_pos(piece_square)
-                    self.draw_square(painter, [row, col], piece_square._color)
+                    self.draw_square(painter, self.get_square_rect(row, col), piece_square._color)
             # 绘制格子
             self.draw_board(painter)

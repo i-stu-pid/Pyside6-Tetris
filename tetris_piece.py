@@ -16,7 +16,6 @@ __author__ = 'lihua.tan'
 
 
 # 基础库
-import copy
 import random
 from enum import IntEnum
 from typing import Union
@@ -101,6 +100,9 @@ class ShapeTable(object):
 class PieceSquare(object):
     '''部件方块 (相当于二维点坐标)
     '''
+    _x, _y = 0, 0# 坐标
+    _color = 0x00# 颜色
+
     def __init__(self, x: int = 0, y: int = 0, color: Union[int, str] = 0x00) -> None: 
         '''构造
         '''
@@ -124,15 +126,21 @@ class PieceSquare(object):
         '''
         return f'(x: {self._x}, y: {self._y}, color: {"#" + hex(self._color)[2:].upper()})'
     
-    def clockwise(self) -> 'None':
-        '''顺时针90度
+    def move(self, dx: int, dy: int) -> None:
+        '''移动
         '''
-        return self.set_point(self._y, -self._x)
-    
-    def anti_clockwise(self) -> 'None':
-        '''逆时针90度
+        self._x += dx
+        self._y += dy
+
+    def rotate(self, angle: int) -> None:
+        '''旋转 (顺时针 90 * n)
         '''
-        return self.set_point(-self._y, self._x)
+        if angle % 90 != 0:
+            raise ValueError from PieceSquare
+        for _ in range((angle % 360) // 90):
+            backup_x = self._x
+            self._x = self._y
+            self._y = -backup_x
 
 
 # 游戏部件
@@ -142,17 +150,15 @@ class TetrisPiece(object):
     由 n 个连续的方块组成的形状
     方块相当于要描的点，围绕原点(0, 0)设置形状的描点坐标
     '''
+    __shape = None# 形状
+    __square_list = None# 方块信息列表
+    __transfer = [0, 0, 0]# 变换 (dx, dy, angle)
 
     def __init__(self, shape=Shape._None) -> None:
         '''构造
         shape: 部件形状索引
         '''
-        self.__shape = shape# 部件形状
-        self.__square_list = None# 部件方块信息列表
-        self.__move = [0, 0]# 移动距离
-        self.__rotate = 0# 旋转角度
-        if shape != Shape._None:
-            self.set_shape(shape)
+        self.set_shape(shape)
 
     def set_shape(self, shape: Shape) -> None:
         '''设置形状
@@ -163,33 +169,31 @@ class TetrisPiece(object):
             return None
         # 形状
         self.__shape = shape
-        color = ShapeTable.get_color(shape)
-        points = ShapeTable.get_points(shape)
-        # 方块信息列表
+        # 方块
         if self.__square_list:
             self.__square_list.clear()
+        color = ShapeTable.get_color(shape)
+        points = ShapeTable.get_points(shape)
         self.__square_list = [PieceSquare(point[0], point[1], color) for point in points]
         # 变换
-        self.__move = [0, 0]# 移动距离
-        self.__rotate = 0# 旋转角度
+        self.__transfer = [0, 0, 0]# 变换 (dx, dy, angle)
 
     def __repr__(self) -> str:
         '''实例化对象的输出信息 (详细)
         '''
-        return f'shape: {self.__shape}, squares: {self.__square_list}'
+        return f'shape: {self.__shape}, transfer: {self.__transfer}, squares: {self.__square_list}'
     
     def clear(self) -> None:
         '''清形状
         '''
         # 形状
         self.__shape = Shape._None
-        # 方块信息列表
+        # 方块
         if self.__square_list:
             self.__square_list.clear()
         self.__square_list = None
         # 变换
-        self.__move = [0, 0]# 移动距离
-        self.__rotate = 0# 旋转角度
+        self.__transfer = [0, 0, 0]# 变换 (dx, dy, angle)
 
     def set_random_shape(self) -> None:
         '''随机设置形状
@@ -205,7 +209,7 @@ class TetrisPiece(object):
     def get_color(self) -> int:
         '''当前部件颜色
         '''
-        return self.__square_list[0]._color
+        return self.__square_list[0]._color if self.__shape != Shape._None else 0x00
 
     def get_squares(self) -> list[PieceSquare]:
         '''方块列表
@@ -259,30 +263,24 @@ class TetrisPiece(object):
         y_list = self.get_y_list()
         return max(y_list) - min(y_list) + 1
     
-    def transfer(self, dx: int = 0, dy: int = 0, rotate: int = 0) -> 'TetrisPiece':
+    def transfer(self, dx: int = 0, dy: int = 0, angle: int = 0) -> 'TetrisPiece':
         '''变换
         '''
         if self.__shape == Shape._None:
             return self
         # 新对象
         result = TetrisPiece(self.__shape)
-        result.__move = self.__move# 移动距离
-        result.__rotate = self.__rotate# 旋转角度
-        # 旋转
-        if rotate % 90 != 0:
-            raise ValueError from TetrisPiece
-        result.__rotate = (result.__rotate + rotate) % 360
-        rotate_times = result.__rotate // 90
         # 平移
-        dx += result.__move[0]
-        dy += result.__move[1]
-        result.__move = [dx, dy]
+        dx += self.__transfer[0]
+        dy += self.__transfer[1]
+        # 旋转
+        if angle % 90 != 0:
+            raise ValueError from TetrisPiece
+        angle = (angle + self.__transfer[2]) % 360
         # 变换
+        result.__transfer = [dx, dy, angle]
         for i in range(len(result.__square_list)):
             square = result.__square_list[i]
-            # 旋转
-            for _ in range(rotate_times):
-                square.clockwise()
-            # 移动
-            square.set_point(square._x + dx, square._y + dy)
+            square.rotate(angle)# 旋转
+            square.move(dx, dy)# 移动
         return result
