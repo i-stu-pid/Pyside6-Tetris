@@ -81,23 +81,13 @@ class TetrisBoard(QFrame):
         """方块对象
         """
         return self.__square_table[row][col]
-    
-    def set_square_to_occupied(self, row: int, col: int, occupant: int, color: int) -> None:
-        """设置占用
-        """
-        self.__square_table[row][col].set_to_occupied(occupant, color)
-    
-    def release_square_to_free(self, row: int, col: int) -> None:
-        """释放为空闲
-        """
-        self.__square_table[row][col].release_to_free()
 
     def clear_all(self) -> None:
         """清空面板
         """
         for row in range(self.__row_count):
             for col in range(self.__col_count):
-                self.release_square_to_free(row, col)
+                self.get_square(row, col).release_to_free()
 
     def convert_piece_pos(self, piece_square: PieceSquare) -> list[int]:
         '''部件坐标 转为 面板坐标
@@ -146,7 +136,7 @@ class TetrisBoard(QFrame):
             raise ValueError
         for piece_square in piece.get_squares():
             row, col = self.convert_piece_pos(piece_square)# 目标位置
-            self.set_square_to_occupied(row, col, int(piece.get_shape()), piece.get_color())# 标记占用
+            self.get_square(row, col).set_to_occupied(int(piece.get_shape()), piece.get_color())
 
     def remove_full_lines(self) -> int:
         '''清除面板中的所有完整行
@@ -166,7 +156,7 @@ class TetrisBoard(QFrame):
                     self.__square_table[row] = copy.deepcopy(self.__square_table[row + 1])
                 # 清最上行
                 for col in range(self.__col_count):
-                    self.release_square_to_free(valid_top_row, col)
+                    self.get_square(valid_top_row, col).release_to_free()
                 # 移除行数
                 remove_count += 1
                 valid_top_row -= 1
