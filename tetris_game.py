@@ -25,12 +25,12 @@ from tetris_game_ui import Ui_Form# ui界面
 class TransferOption(IntEnum):
     '''部件变换
     '''
-    LineDown = 0# 下移一行
-    DropDown = 1# 落至底部
-    LeftShift = 2# 左移
-    RightShift = 3# 右移
-    Rotate = 4# 顺时针旋转
-    _None = 5# 无
+    # _None = 0# 无
+    LineDown = Qt.Key.Key_L# 下移一行
+    DropDown = Qt.Key.Key_Down# 落至底部
+    LeftShift = Qt.Key.Key_Left# 左移
+    RightShift = Qt.Key.Key_Right# 右移
+    Rotate = Qt.Key.Key_Up# 顺时针旋转
 
 
 # 游戏运行状态
@@ -100,7 +100,7 @@ class TetrisGame(QWidget):
         self.__data.display()
         # 面板
         self._board = self.__ui.frame_board
-        self._board.reset_size(24, 10)
+        self._board.reset(24, 10)
         # 当前部件
         self._curr_piece = TetrisPiece()
         # 下一部件
@@ -125,8 +125,8 @@ class TetrisGame(QWidget):
         '''
         # 面板
         square = 27
-        board_widget = self._board._col_count * square
-        board_height = self._board._row_count * square
+        board_widget = self._board.get_col_count() * square
+        board_height = self._board.get_row_count() * square
         # 窗口
         widget_widget = (board_widget / 3) * (2 + 3 + 2)# 水平布局比例
         widget_height = board_height
@@ -200,6 +200,41 @@ class TetrisGame(QWidget):
         self.update()
         self.set_timer_start(False if self._state == GameState.End else True)
 
+    @override# 重写
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        '''事件监控器
+        '''
+        # 绘制事件
+        event_type = event.type()
+        if event_type == QEvent.Type.Paint:
+            # 根据面板大小调整方块大小
+            self._board.adjust_square_size()
+            # 绘制下一部件
+            if watched == self._next_piece_label:
+                self.draw_next_piece()
+        # 键盘按下事件
+        elif event_type == QEvent.Type.KeyPress:
+            self.try_transfer_piece_by_user(event)# 部件变换
+        return super(TetrisGame, self).eventFilter(watched, event)
+    
+    def try_transfer_piece_by_user(self, event: QKeyEvent) -> None:
+        '''玩家手动进行部件变换
+        '''
+        if self._state == GameState.Run and self._curr_piece.get_shape() != Shape._None:
+            try:
+                option = TransferOption(event.key())
+            except:
+                return None
+            if self.try_transfer_piece(option):# 部件变换
+                self.update()# 刷新显示
+
+    def draw_next_piece(self) -> None:
+        '''绘制下一部件
+        '''
+        if self._next_piece.get_shape() != Shape._None:
+            draw_piece = self._next_piece.transfer(angle=270)# 垂直镜像, 匹配实际操作形状
+            draw_piece.draw(self._next_piece_label)# 绘制部件
+
     def get_new_piece(self) -> None:
         '''更新部件
         '''
@@ -216,10 +251,8 @@ class TetrisGame(QWidget):
     def try_transfer_piece(self, option: TransferOption) -> bool:
         '''部件变换
         '''
-        if option == TransferOption._None:
-            return True
         # 下移一行
-        elif option == TransferOption.LineDown:
+        if option == TransferOption.LineDown:
             new_piece = self._curr_piece.transfer(0, -1)
         # 落至底部
         elif option == TransferOption.DropDown:
@@ -266,62 +299,3 @@ class TetrisGame(QWidget):
             self.get_new_piece()
             self.set_timer_start(True)#启动定时
             self.update()
-
-    @override# 重写
-    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
-        '''事件监控器
-        '''
-        # 绘制事件
-        event_type = event.type()
-        if event_type == QEvent.Type.Paint:
-            # 根据面板大小设置方块大小
-            BoardSquare.resize(self._board.width() / self._board._col_count, self._board.height() / self._board._row_count)
-            # 绘制下一部件
-            if watched == self._next_piece_label:
-                self.draw_next_piece()
-        # 键盘按下事件
-        elif event_type == QEvent.Type.KeyPress:
-            # 部件变换
-            if self._state == GameState.Run and self._curr_piece.get_shape() != Shape._None:
-                if self.try_transfer_piece(self.get_transfer_option(event)):
-                    self.update()# 刷新显示
-        return super(TetrisGame, self).eventFilter(watched, event)
-    
-    def get_transfer_option(self, event: QKeyEvent) -> TransferOption:
-        '''键值转部件变换
-        '''
-        key = event.key()
-        if key == Qt.Key.Key_Left:# 左移
-            return TransferOption.LeftShift
-        elif key == Qt.Key.Key_Right:# 右移
-            return TransferOption.RightShift
-        elif key == Qt.Key.Key_Down:# 落至底部
-            return TransferOption.DropDown
-        elif key == Qt.Key.Key_Up:# 顺时针旋转90度
-            return TransferOption.Rotate
-        return TransferOption._None
-
-    def draw_next_piece(self) -> None:
-        '''绘制下一部件
-        '''
-        if self._next_piece.get_shape() != Shape._None:
-            draw_widget = self._next_piece_label
-            with QPainter(draw_widget) as painter:
-                # 填充窗口背景
-                widget_rect = draw_widget.rect()
-                painter.fillRect(widget_rect, draw_widget.palette().color(QPalette.ColorRole.Window))
-                # 部件参数
-                draw_piece = self._next_piece.transfer(angle=270)# 垂直镜像, 匹配实际操作形状
-                piece_width, piece_height = draw_piece.get_width(), draw_piece.get_height()# 部件大小
-                piece_min_x, piece_min_y = draw_piece.get_left_x(), draw_piece.get_bottom_y()# 边界
-                # 实际绘制窗口 (居中部件)
-                dx = (widget_rect.width() - (piece_width * BoardSquare.get_width())) / 2
-                dy = (widget_rect.height() - (piece_height * BoardSquare.get_height())) / 2
-                widget_rect.adjust(dx, dy, -dx, -dy)
-                # 绘制方块
-                for square in draw_piece.get_squares():
-                    left = widget_rect.left() + (square._x - piece_min_x) * BoardSquare.get_width()
-                    top = widget_rect.top() + (square._y - piece_min_y) * BoardSquare.get_height()
-                    BoardSquare.draw(painter, left, top, QColor(square._color))#, square_size)
-
-

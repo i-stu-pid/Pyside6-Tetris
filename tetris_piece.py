@@ -18,9 +18,11 @@ __author__ = 'lihua.tan'
 # 基础库
 import random
 from enum import IntEnum
-from typing import Union
+# Qt标准库
+from PySide6.QtGui import (QPainter, QColor, QPalette)
+from PySide6.QtWidgets import QWidget
 # 自封装库
-pass
+from tetris_square import PieceSquare# 游戏方块
 
 
 # 部件形状索引
@@ -92,63 +94,6 @@ class ShapeTable(object):
         return cls.__param_table[shape][1]
 
 
-# 部件方块
-class PieceSquare(object):
-    '''部件方块 (相当于二维点坐标)
-    '''
-    _x, _y = 0, 0# 坐标
-    _color = 0x00# 颜色
-
-    def __init__(self, x: int = 0, y: int = 0, color: Union[int, str] = 0x00) -> None: 
-        '''构造
-        '''
-        self.set_point(x, y)# 设置坐标
-        self.set_color(color)# 设置颜色
-
-    def set_point(self, x: int, y: int) -> None:
-        '''设置坐标
-        '''
-        self._x = x
-        self._y = y
-
-    def set_color(self, color: Union[int, str]) -> None:
-        '''设置颜色
-        color: 表示颜色的 16进制数 / 16进制字符串 (无前缀 或 '0x'前缀)
-        '''
-        self._color = color if isinstance(color, int) else int(color, 16)
-
-    def __repr__(self) -> str:
-        '''实例化对象的输出信息
-        '''
-        return f'(x: {self._x}, y: {self._y}, color: {"#" + hex(self._color)[2:].upper()})'
-    
-    def move(self, dx: int, dy: int) -> None:
-        '''移动
-        '''
-        self._x += dx
-        self._y += dy
-
-    def rotate(self, angle: int) -> None:
-        '''旋转 (顺时针 90 * n)
-        '''
-        if angle % 90 != 0:
-            raise ValueError from PieceSquare
-        for _ in range((angle % 360) // 90):
-            backup_x = self._x
-            self._x = self._y
-            self._y = -backup_x
-
-    def flip_vertical(self) -> None:
-        '''垂直镜像
-        '''
-        self._y = -self._y
-
-    def flip_horizontal(self) -> None:
-        '''水平镜像
-        '''
-        self._x = -self._x
-
-
 # 游戏部件
 class TetrisPiece(object):
     '''游戏部件
@@ -215,7 +160,7 @@ class TetrisPiece(object):
     def get_color(self) -> int:
         '''当前部件颜色
         '''
-        return self.__square_list[0]._color if self.__shape != Shape._None else 0x00
+        return self.__square_list[0].get_color() if self.__shape != Shape._None else 0x00
 
     def get_squares(self) -> list[PieceSquare]:
         '''方块列表
@@ -297,3 +242,25 @@ class TetrisPiece(object):
             square.rotate(angle)# 旋转
             square.move(dx, dy)# 移动
         return result
+
+    def draw(self, target_widget: QWidget) -> None:
+        '''绘制部件
+        '''
+        if self.get_shape() == Shape._None:
+            return None
+        with QPainter(target_widget) as painter:
+            # 填充窗口背景
+            widget_rect = target_widget.rect()
+            painter.fillRect(widget_rect, target_widget.palette().color(QPalette.ColorRole.Window))
+            # 部件参数
+            piece_width, piece_height = self.get_width(), self.get_height()# 部件大小
+            piece_min_x, piece_min_y = self.get_left_x(), self.get_bottom_y()# 边界
+            # 实际绘制窗口 (居中部件)
+            dx = (widget_rect.width() - (piece_width * PieceSquare.get_width())) / 2
+            dy = (widget_rect.height() - (piece_height * PieceSquare.get_height())) / 2
+            widget_rect.adjust(dx, dy, -dx, -dy)
+            # 绘制方块
+            for square in self.get_squares():
+                left = widget_rect.left() + (square._x - piece_min_x) * PieceSquare.get_width()
+                top = widget_rect.top() + (square._y - piece_min_y) * PieceSquare.get_height()
+                PieceSquare.draw(painter, left, top, QColor(square.get_color()))
