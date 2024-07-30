@@ -16,13 +16,13 @@ from PySide6.QtWidgets import (QWidget, QMessageBox)
 # python自封装
 pass
 # Qt自封装库
-# from tetris_board import TetrisBoard# 游戏面板
+from tetris_board import BoardSquare# 游戏面板
 from tetris_piece import TetrisPiece, Shape# 游戏部件
 from tetris_game_ui import Ui_Form# ui界面
 
 
 # 部件变换
-class PieceTrans(IntEnum):
+class TransferOption(IntEnum):
     '''部件变换
     '''
     LineDown = 0# 下移一行
@@ -30,6 +30,7 @@ class PieceTrans(IntEnum):
     LeftShift = 2# 左移
     RightShift = 3# 右移
     Rotate = 4# 顺时针旋转
+    _None = 5# 无
 
 
 # 游戏运行状态
@@ -41,45 +42,32 @@ class GameState(IntEnum):
     Pause = 2,# 暂停
 
 
-# 游戏运行
-class TetrisGame(QWidget):
-    '''俄罗斯方块 游戏运行
+class TetrisData(object):
+    '''俄罗斯方块 游戏数据
     '''
-    def __init__(self, parent=None) -> None:
+    def __init__(self, ui: Ui_Form) -> None:
         '''构造
         '''
-        super().__init__(parent)# 访问父类的方法和属性
-        self.__init_ui()# 界面
-        self.__init_data()# 数据
-        self.__init_state()# 状态
-        self.__init_run()# 运行
-        self.set_widget_size()# 窗口大小
-        self.__ui.label_next_piece.installEventFilter(self)
+        self.__ui = ui# 控制界面
+        self.reset()# 重置数据
 
-    def __init_ui(self) -> None:
-        '''界面
+    def reset(self) -> None:
+        '''重置
         '''
-        self.__ui = Ui_Form()
-        self.__ui.setupUi(self)
-        self.setWindowTitle('俄罗斯方块')# 标题
-
-    def __init_data(self) -> None:
-        '''数据
-        '''
+        # 重置数据
         self._score = 0# 分数
         self._level = 1# 等级
         self._lines_removed = 0# 累计移除行数
         self._pieces_dropped = 0# 累计下落部件
 
-    def display_data(self) -> None:
+    def display(self) -> None:
         '''显示数据
         '''
         self.__ui.lcdNumber_score.display(self._score)# 分数
         self.__ui.lcdNumber_level.display(self._level)# 等级
         self.__ui.lcdNumber_removed_lines.display(self._lines_removed)# 累计移除行数
 
-    @Slot(int)# 槽
-    def update_data(self, remove_lines: int) -> None:
+    def update(self, remove_lines: int) -> None:
         '''更新数据
         '''
         # 放置部件
@@ -91,17 +79,70 @@ class TetrisGame(QWidget):
         if remove_lines:
             self._score += 10 * remove_lines# 分数
             self._lines_removed += remove_lines# 累计移除行数
-        # 显示数据
-        self.display_data()
 
-    def __init_state(self) -> None:
-        '''状态
+
+# 游戏运行
+class TetrisGame(QWidget):
+    '''俄罗斯方块 游戏运行
+    '''
+    def __init__(self, parent=None) -> None:
+        '''构造
         '''
-        self._state = GameState.End
+        # 访问父类的方法和属性
+        super().__init__(parent)
+        # 界面
+        self.__ui = Ui_Form()
+        self.__ui.setupUi(self)
+        self.__ui.frame_board.raise_()
+        self.setWindowTitle('俄罗斯方块')# 标题
+        # 数据
+        self.__data = TetrisData(self.__ui)
+        self.__data.display()
+        # 面板
+        self._board = self.__ui.frame_board
+        self._board.reset_size(24, 10)
+        # 当前部件
+        self._curr_piece = TetrisPiece()
+        # 下一部件
+        self._next_piece = TetrisPiece()
+        self._next_piece.set_random_shape()
+        self._next_piece_label = self.__ui.label_next_piece
+        self._next_piece_label.installEventFilter(self)
+        # 运行
+        self._timer = QBasicTimer()# 定时器 (定时移动部件)
+        self._is_wait_remove_done = False# 等待移除界面刷新
+        self._state = GameState.End# 状态
         self.__ui.pushButton_start.clicked.connect(self.start)# 开始
         self.__ui.pushButton_recover.clicked.connect(self.start)# 恢复
         self.__ui.pushButton_pause.clicked.connect(self.pause)# 暂停
         self.__ui.pushButton_end.clicked.connect(self.end)# 结束
+        # 窗口大小
+        self.__init_size()
+        self.installEventFilter(self)
+
+    def __init_size(self) -> None:
+        '''设置窗口大小
+        '''
+        # 面板
+        square = 27
+        board_widget = self._board._col_count * square
+        board_height = self._board._row_count * square
+        # 窗口
+        widget_widget = (board_widget / 3) * (2 + 3 + 2)# 水平布局比例
+        widget_height = board_height
+        # 调整大小
+        # self.resize(widget_widget, widget_height)
+        self.setFixedSize(widget_widget, widget_height)
+
+    def set_timer_start(self, enable: bool, time_ms=-1) -> None:
+        '''定时设置
+        '''
+        if not enable or self._state == GameState.End:
+            self._timer.stop()
+            return None
+        if time_ms == -1:
+            time_ms = 1000 / (1 + self.__data._level)
+        self._timer.start(time_ms, self)
 
     @Slot()# 槽
     def start(self) -> None:
@@ -109,18 +150,19 @@ class TetrisGame(QWidget):
         '''
         # 开始
         if self._state == GameState.End:
-            self.__init_data()# 数据
+            self.__data.reset()# 数据
+            self.__data.display()
             self._board.clear_all()# 面板
             self.get_new_piece()# 部件
             self._state = GameState.Run# 状态
             self._is_wait_remove_done = False
-            self.display_data()# 显示数据
             self.update()
         # 恢复
         elif self._state == GameState.Pause:
             self._state = GameState.Run# 状态
         # 定时器
         self.set_timer_start(True)
+        self._board.setFocus()# 设置焦点到面板, 快速响应键盘按键处理
 
     @Slot()# 槽
     def pause(self) -> None:
@@ -141,45 +183,6 @@ class TetrisGame(QWidget):
         self._state = GameState.End# 状态
         self.update()# 更新界面
 
-    def __init_run(self) -> None:
-        '''运行
-        '''
-        # 面板
-        self._board = self.__ui.frame_board
-        # 部件
-        self._curr_piece = TetrisPiece()
-        self._next_piece = TetrisPiece()
-        self._next_piece.set_random_shape()
-        self._next_piece_label = self.__ui.label_next_piece
-        # 定时器
-        self._timer = QBasicTimer()
-        self._is_wait_remove_done = False# 等待移除界面刷新
-
-    def set_widget_size(self) -> None:
-        '''设置窗口大小
-        '''
-        # 游戏面板
-        self._board.reset_size(24, 10)
-        square = 27
-        board_widget = self._board._col_count * square
-        board_height = self._board._row_count * square
-        # 窗口
-        widget_widget = (board_widget / 3) * (2 + 3 + 2)# 水平布局比例
-        widget_height = board_height
-        # 调整大小
-        self.resize(widget_widget, widget_height)
-        self._borad_factor = self._board._col_count / self._board._row_count
-
-    def set_timer_start(self, enable: bool, time_ms=-1) -> None:
-        '''定时设置
-        '''
-        if not enable or self._state == GameState.End:
-            self._timer.stop()
-            return None
-        if time_ms == -1:
-            time_ms = 1000 / (1 + self._level)
-        self._timer.start(time_ms, self)
-
     @override# 重写
     def timerEvent(self, event: QTimerEvent) -> None:
         '''定时移动部件
@@ -188,7 +191,7 @@ class TetrisGame(QWidget):
             super(TetrisGame, self).timerEvent(event)
             return None
         if not self._is_wait_remove_done:
-            if not self.try_transfer_piece(PieceTrans.LineDown):
+            if not self.try_transfer_piece(TransferOption.LineDown):
                 return None
         else:# 等待移除界面刷新
             self._is_wait_remove_done = False
@@ -196,29 +199,6 @@ class TetrisGame(QWidget):
         # 更新显示
         self.update()
         self.set_timer_start(False if self._state == GameState.End else True)
-
-    @override# 重写
-    def keyPressEvent(self, event: QKeyEvent):
-        '''按键按下事件
-        '''
-        # 键值
-        transfer = None
-        if self._state == GameState.Run and self._curr_piece.get_shape() != Shape._None:
-            key = event.key()
-            if key == Qt.Key.Key_Left:# 左移
-                transfer = PieceTrans.LeftShift
-            elif key == Qt.Key.Key_Right:# 右移
-                transfer = PieceTrans.RightShift
-            elif key == Qt.Key.Key_Down:# 落至底部
-                transfer = PieceTrans.DropDown
-            elif key == Qt.Key.Key_Up:# 顺时针旋转90度
-                transfer = PieceTrans.Rotate
-        # 转换
-        if transfer:
-            if self.try_transfer_piece(transfer):
-                self.update()# 刷新显示
-        else:
-            super(TetrisGame, self).keyPressEvent(event)
 
     def get_new_piece(self) -> None:
         '''更新部件
@@ -233,30 +213,32 @@ class TetrisGame(QWidget):
         # 下一部件
         self._next_piece.set_random_shape()
 
-    def try_transfer_piece(self, transfer: PieceTrans) -> bool:
+    def try_transfer_piece(self, option: TransferOption) -> bool:
         '''部件变换
         '''
+        if option == TransferOption._None:
+            return True
         # 下移一行
-        if transfer == PieceTrans.LineDown:
+        elif option == TransferOption.LineDown:
             new_piece = self._curr_piece.transfer(0, -1)
         # 落至底部
-        elif transfer == PieceTrans.DropDown:
+        elif option == TransferOption.DropDown:
             new_piece = self._curr_piece.transfer(0, -1)
             while self._board.is_piece_setable(new_piece):
                 new_piece = new_piece.transfer(0, -1)
             self._curr_piece = new_piece.transfer(0, 1)
         # 左移
-        elif transfer == PieceTrans.LeftShift:
+        elif option == TransferOption.LeftShift:
             new_piece = self._curr_piece.transfer(-1, 0)
         # 右移
-        elif transfer == PieceTrans.RightShift:
+        elif option == TransferOption.RightShift:
             new_piece = self._curr_piece.transfer(1, 0)
         # 顺时针旋转90度
-        elif transfer == PieceTrans.Rotate:
+        elif option == TransferOption.Rotate:
             new_piece = self._curr_piece.transfer(angle=90)
         # 尝试放置部件
         if not self._board.is_piece_setable(new_piece):
-            if transfer in [PieceTrans.LineDown, PieceTrans.DropDown]:
+            if option in [TransferOption.LineDown, TransferOption.DropDown]:
                 self.set_piece_arrived()# 部件抵达
             return False
         self._curr_piece = new_piece
@@ -271,58 +253,75 @@ class TetrisGame(QWidget):
         # 消除整行
         remove_lines = self._board.remove_full_lines()
         # 更新数据
-        self.update_data(remove_lines)
+        self.__data.update(remove_lines)
+        self.__data.display()
         # 更新显示
         if remove_lines:
             self._board.set_draw_piece(None)
             self._curr_piece.set_shape(Shape._None)
-            self.set_timer_start(True, 500)#启动定时
-            # self.set_timer_start(True)#启动定时
+            # self.set_timer_start(True, 500)#启动定时
+            self.set_timer_start(True)#启动定时
             self._is_wait_remove_done = True# 等待移除界面刷新
         else:
             self.get_new_piece()
             self.set_timer_start(True)#启动定时
             self.update()
 
+    @override# 重写
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         '''事件监控器
         '''
         # 绘制事件
-        if event.type() == QEvent.Type.Paint:
-            # 下一部件 (绘制有效下一部件)
-            if watched == self.__ui.label_next_piece and self._next_piece.get_shape() != Shape._None:
-                next_piece_label = self.__ui.label_next_piece
-                draw_piece = self._next_piece.transfer(flip_vertical=True)
-                label_rect = self.__ui.label_next_piece.rect()
-                square_size = min(label_rect.width() / draw_piece.get_width(), label_rect.height() / draw_piece.get_height())
-                square_size *= (3 / 7)
-                label_rect_top = (label_rect.height() - draw_piece.get_height() * square_size) / 2
-                label_rect_left = (label_rect.width() - draw_piece.get_width() * square_size) / 2
-                with QPainter(next_piece_label) as painter:
-                    painter.fillRect(label_rect, next_piece_label.palette().color(QPalette.ColorRole.Window))
-                    for square in draw_piece.get_squares():
-                        left = label_rect_left + (square._x - draw_piece.get_left_x()) * square_size
-                        top = label_rect_top + (square._y - draw_piece.get_bottom_y()) * square_size
-                        square_rect = QRect(left, top, square_size, square_size)
-                        self.draw_square(painter, square_rect, square._color)
+        event_type = event.type()
+        if event_type == QEvent.Type.Paint:
+            # 根据面板大小设置方块大小
+            BoardSquare.resize(self._board.width() / self._board._col_count, self._board.height() / self._board._row_count)
+            # 绘制下一部件
+            if watched == self._next_piece_label:
+                self.draw_next_piece()
+        # 键盘按下事件
+        elif event_type == QEvent.Type.KeyPress:
+            # 部件变换
+            if self._state == GameState.Run and self._curr_piece.get_shape() != Shape._None:
+                if self.try_transfer_piece(self.get_transfer_option(event)):
+                    self.update()# 刷新显示
         return super(TetrisGame, self).eventFilter(watched, event)
-
-    def draw_square(self, painter: QPainter, square_rect: QRect, color: int) -> None:
-        '''绘制方块
-        painter: 绘图工具
-        square_rect: 要绘制的方块窗口矩阵
+    
+    def get_transfer_option(self, event: QKeyEvent) -> TransferOption:
+        '''键值转部件变换
         '''
-        # 内部填充
-        square_rect.adjust(1, 1, -1, -1)# 调整: 左上角 (-1, -1) 向内收缩 1, 右下角 (1, 1) 向内收缩 1
-        square_color = QColor(color)
-        painter.fillRect(square_rect, square_color)
-        # 左上角的两条边框
-        square_rect.adjust(-1, -1, 1, 1)# 恢复
-        painter.setPen(square_color.lighter())
-        painter.drawLine(square_rect.topLeft(), square_rect.topRight())
-        painter.drawLine(square_rect.topLeft(), square_rect.bottomLeft())
-        # 右下角的两条边框
-        painter.setPen(square_color.darker())
-        painter.drawLine(square_rect.bottomRight(), square_rect.topRight())
-        painter.drawLine(square_rect.bottomRight(), square_rect.bottomLeft())
+        key = event.key()
+        if key == Qt.Key.Key_Left:# 左移
+            return TransferOption.LeftShift
+        elif key == Qt.Key.Key_Right:# 右移
+            return TransferOption.RightShift
+        elif key == Qt.Key.Key_Down:# 落至底部
+            return TransferOption.DropDown
+        elif key == Qt.Key.Key_Up:# 顺时针旋转90度
+            return TransferOption.Rotate
+        return TransferOption._None
+
+    def draw_next_piece(self) -> None:
+        '''绘制下一部件
+        '''
+        if self._next_piece.get_shape() != Shape._None:
+            draw_widget = self._next_piece_label
+            with QPainter(draw_widget) as painter:
+                # 填充窗口背景
+                widget_rect = draw_widget.rect()
+                painter.fillRect(widget_rect, draw_widget.palette().color(QPalette.ColorRole.Window))
+                # 部件参数
+                draw_piece = self._next_piece.transfer(angle=270)# 垂直镜像, 匹配实际操作形状
+                piece_width, piece_height = draw_piece.get_width(), draw_piece.get_height()# 部件大小
+                piece_min_x, piece_min_y = draw_piece.get_left_x(), draw_piece.get_bottom_y()# 边界
+                # 实际绘制窗口 (居中部件)
+                dx = (widget_rect.width() - (piece_width * BoardSquare.get_width())) / 2
+                dy = (widget_rect.height() - (piece_height * BoardSquare.get_height())) / 2
+                widget_rect.adjust(dx, dy, -dx, -dy)
+                # 绘制方块
+                for square in draw_piece.get_squares():
+                    left = widget_rect.left() + (square._x - piece_min_x) * BoardSquare.get_width()
+                    top = widget_rect.top() + (square._y - piece_min_y) * BoardSquare.get_height()
+                    BoardSquare.draw(painter, left, top, QColor(square._color))#, square_size)
+
 

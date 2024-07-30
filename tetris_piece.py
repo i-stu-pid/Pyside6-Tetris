@@ -28,14 +28,16 @@ class Shape(IntEnum):
     '''部件形状索引
     索引 ShapeTable.__param_table (形状配置参数表)
     '''
-    _T = 0# T字形
-    _I = 1# 条形
-    _L = 2# L字形
-    _J = 3# J字形 (L字形的水平镜像)
-    _O = 4# 正方形
-    _Z = 5# Z字形
-    _S = 6# S字形 (Z字形的水平镜像)
-    _None = 7# 无
+    _None = 0# 无
+    _ValidStart = 1,
+    _T = 1# T字形
+    _I = 2# 条形
+    _L = 3# L字形
+    _J = 4# J字形 (L字形的水平镜像)
+    _O = 5# 正方形
+    _Z = 6# Z字形
+    _S = 7# S字形 (Z字形的水平镜像)
+    _ValidEnd = 7,
 
 
 # 形状配置参数表
@@ -43,6 +45,10 @@ class ShapeTable(object):
     '''形状配置参数表
     '''
     __param_table = (
+        (   # 无
+            0x000000,# 颜色
+            ((0, 0), (0, 0), (0, 0), (0, 0))# 描点坐标
+        ),
         (   # T字形
             0xCCCC66,# 颜色
             ((-1, 0), (0, 0), (1, 0), (0, 1))# 描点坐标
@@ -71,17 +77,7 @@ class ShapeTable(object):
             0x66CC66,# 颜色
             ((0, -1), (0, 0), (1, 0), (1, 1))# 描点坐标
         ),
-        (   # 无
-            0x000000,# 颜色
-            ((0, 0), (0, 0), (0, 0), (0, 0))# 描点坐标
-        ),
     )
-
-    @classmethod
-    def get_valid_count(cls) -> int:
-        '''有效形状数 (排除形状'无')
-        '''
-        return len(cls.__param_table) - 1
 
     @classmethod
     def get_color(cls, shape: Shape) -> int:
@@ -208,7 +204,7 @@ class TetrisPiece(object):
     def set_random_shape(self) -> None:
         '''随机设置形状
         '''
-        random_shape = random.randint(0, ShapeTable.get_valid_count() - 1)
+        random_shape = random.randint(Shape._ValidStart, Shape._ValidEnd)
         self.set_shape(random_shape)
 
     def get_shape(self) -> Shape:
@@ -285,7 +281,7 @@ class TetrisPiece(object):
         dy += self.__transfer[1]
         # 旋转
         if angle % 90 != 0:
-            raise ValueError from TetrisPiece
+            raise ValueError
         angle = (angle + self.__transfer[2]) % 360
         # 镜像
         flip_horizontal = (not self.__transfer[3]) if flip_horizontal else self.__transfer[3]
