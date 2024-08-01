@@ -1,10 +1,21 @@
 # -*- coding: utf-8 -*-
 
-# 导入库
+
+"""主模块
+主程序入口
+"""
+
+
+# 模块信息
+__version__ = '0.1'
+__author__ = 'lihua.tan'
+
+
+# python库
 import sys
-# 导入Qt
-from PySide6.QtWidgets import QApplication, QStyleFactory
-# 导入主窗口
+# Qt标准库
+from PySide6.QtWidgets import (QApplication, QStyleFactory)
+# 自封装库
 from tetris_game import TetrisGame
 
 # 主程序入口

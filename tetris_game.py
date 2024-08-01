@@ -6,20 +6,24 @@
 """
 
 
-# 基础
+# 模块信息
+__all__ = ['BoardSquare', 'TetrisBoard']
+__version__ = '0.1'
+__author__ = 'lihua.tan'
+
+
+# python库
 from enum import IntEnum
 from typing import override
 # Qt标准库
-from PySide6.QtCore import (Qt, Slot, QBasicTimer, QTimerEvent, QEvent, QObject, QRect)
-from PySide6.QtGui import (QKeyEvent, QHoverEvent, QMouseEvent)
+from PySide6.QtCore import (Qt, Slot, QBasicTimer, QTimerEvent, QEvent, QObject)
+from PySide6.QtGui import (QKeyEvent)
 from PySide6.QtWidgets import (QWidget, QMessageBox)
-# python自封装
-pass
-# Qt自封装库
+# 自封装库
+from drag_resize import DragResize
 from tetris_board import BoardSquare# 游戏面板
 from tetris_piece import TetrisPiece, Shape# 游戏部件
 from tetris_game_ui import Ui_Form# ui界面
-from drag_resize import DragResize
 
 
 # 部件变换
@@ -119,8 +123,7 @@ class TetrisGame(QWidget):
         # 窗口大小
         self.__init_size()
         self.installEventFilter(self)# 事件监听
-        # self.setMouseTracking(True)# 鼠标追踪
-        self._darg_resize = DragResize(self)
+        self._darg_resize = DragResize(self, scale=True)# 比例调整大小
 
     def __init_size(self) -> None:
         '''设置窗口大小
@@ -133,7 +136,6 @@ class TetrisGame(QWidget):
         widget_widget = (board_widget / 3) * (2 + 3 + 2)# 水平布局比例
         widget_height = board_height
         # 调整大小
-        # self.resize(widget_widget, widget_height)
         self.setFixedSize(widget_widget, widget_height)
 
     def set_timer_start(self, enable: bool, time_ms=-1) -> None:
@@ -223,39 +225,6 @@ class TetrisGame(QWidget):
             if timer_event.timerId() == self._timer.timerId():
                 self.try_transfer_piece(TransferOption.LineDown)
                 self.set_timer_start(False if self._state == GameState.End else True)
-        # # 鼠标悬停
-        # elif event_type == QEvent.Type.HoverEnter:
-        #     pass
-        #     print('HoverEnter')
-        # # 鼠标悬停
-        # elif event_type == QEvent.Type.Enter:
-        #     pass
-        #     print('Enter')
-        # # 鼠标点击
-        # elif event_type == QEvent.Type.MouseButtonPress:
-        #     pass
-        #     print('MouseButtonPress')
-        # # 鼠标移动
-        # elif event_type == QEvent.Type.MouseMove:
-        #     pass
-        #     print('MouseMove')
-        #     # mouse_event: QMouseEvent = event
-        #     # advance = 5
-        #     # mouse_pos = mouse_event.pos()
-        #     # # print(mouse_pos, self.rect(), mouse_event.globalPosition, self.frameGeometry())
-        #     # is_horizontal_left_drag = abs(mouse_pos.x() - self.rect().left()) < advance# 水平拖拽 左
-        #     # is_horizontal_right_drag = abs(mouse_pos.x() - self.rect().right()) < advance# 水平拖拽 右
-        #     # is_vertical_bottom_drag = abs(mouse_pos.y() - self.rect().bottom()) < advance# 垂直拖拽 底部
-        #     # if (is_horizontal_left_drag & is_vertical_bottom_drag):
-        #     #     self.setCursor(Qt.CursorShape.SizeBDiagCursor)# 左下
-        #     # elif (is_horizontal_right_drag & is_vertical_bottom_drag):
-        #     #     self.setCursor(Qt.CursorShape.SizeFDiagCursor)# 右下
-        #     # else:
-        #     #     self.unsetCursor()
-        # # 鼠标释放
-        # elif event_type == QEvent.Type.MouseButtonRelease:
-        #     pass
-        #     print('MouseButtonRelease')
         return super(TetrisGame, self).eventFilter(watched, event)
 
     def draw_next_piece(self) -> None:

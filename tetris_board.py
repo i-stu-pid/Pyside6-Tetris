@@ -8,13 +8,13 @@
 """
 
 
-# 模块级的“呆”名
-__all__ = ['BoardSquare', 'TetrisBoard']
+# 模块信息
+__all__ = ['TetrisBoard']
 __version__ = '0.1'
 __author__ = 'lihua.tan'
 
 
-# 基础
+# python库
 import copy
 from typing import override
 # Qt标准库

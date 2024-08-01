@@ -9,13 +9,13 @@
 """
 
 
-# 模块级的“呆”名
-__all__ = ['Shape', 'ShapeTable', 'PieceSquare', 'TetrisPiece']
+# 模块信息
+__all__ = ['Shape', 'ShapeTable', 'TetrisPiece']
 __version__ = '0.1'
 __author__ = 'lihua.tan'
 
 
-# 基础库
+# python库
 import random
 from enum import IntEnum
 # Qt标准库

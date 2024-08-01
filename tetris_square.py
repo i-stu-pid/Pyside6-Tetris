@@ -7,13 +7,13 @@
 """
 
 
-# 模块级的“呆”名
+# 模块信息
 __all__ = ['BoardSquare', 'PieceSquare']
 __version__ = '0.1'
 __author__ = 'lihua.tan'
 
 
-# 基础库
+# python库
 from typing import Union
 # Qt标准库
 from PySide6.QtCore import (QRect)
