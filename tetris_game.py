@@ -7,7 +7,7 @@
 
 
 # 模块信息
-__all__ = ['BoardSquare', 'TetrisBoard']
+__all__ = ['TetrisGame']
 __version__ = '0.1'
 __author__ = 'lihua.tan'
 
@@ -20,6 +20,7 @@ from PySide6.QtCore import (Qt, Slot, QBasicTimer, QTimerEvent, QEvent, QObject)
 from PySide6.QtGui import (QKeyEvent)
 from PySide6.QtWidgets import (QWidget, QMessageBox)
 # 自封装库
+from ini_config import GlobalConfig# 配置文件管理
 from drag_resize import DragResize# 调整大小
 from tetris_board import BoardSquare# 游戏面板
 from tetris_piece import TetrisPiece, Shape# 游戏部件
@@ -54,14 +55,35 @@ class TetrisData(object):
         '''构造
         '''
         self.__ui = ui# 控制界面
+        self.load_config()# 加载配置
         self.reset()# 重置数据
+
+    def load_config(self) -> None:
+        '''加载配置
+        '''
+        # 初始等级
+        self.__start_level = 1
+        load_value = GlobalConfig.load(__name__, 'start_level', str(self.__start_level))
+        self.__start_level = int(load_value)
+        # 达到此值, 等级+1
+        self.__update_level_count = 25
+        load_value = GlobalConfig.load(__name__, 'update_level_count', str(self.__update_level_count))
+        self.__update_level_count = int(load_value)
+
+    def save_config(self) -> None:
+        '''保存配置
+        '''
+        # 初始等级
+        GlobalConfig.save(__name__, 'start_level', str(self.__start_level))
+        # 达到此值, 等级+1
+        GlobalConfig.save(__name__, 'update_level_count', str(self.__update_level_count))
 
     def reset(self) -> None:
         '''重置
         '''
         # 重置数据
         self._score = 0# 分数
-        self._level = 1# 等级
+        self._level = self.__start_level# 等级
         self._lines_removed = 0# 累计移除行数
         self._pieces_dropped = 0# 累计下落部件
 
@@ -78,7 +100,7 @@ class TetrisData(object):
         # 放置部件
         self._score += 1# 分数
         self._pieces_dropped += 1# 累计下落部件
-        if self._pieces_dropped % 25 == 0:
+        if self._pieces_dropped % self.__update_level_count == 0:
             self._level += 1# 等级
         # 消除整行
         if remove_lines:
@@ -95,6 +117,9 @@ class TetrisGame(QWidget):
         '''
         # 访问父类的方法和属性
         super().__init__(parent)
+        # 配置
+        GlobalConfig.load_file(base_name='俄罗斯方块配置')
+        self.load_config()# 加载配置
         # 界面
         self.__ui = Ui_Form()
         self.__ui.setupUi(self)
@@ -105,7 +130,7 @@ class TetrisGame(QWidget):
         self.__data.display()
         # 面板
         self._board = self.__ui.frame_board
-        self._board.reset(24, 10)
+        self._board.reset(self.__board_row_count, self.__board_col_count)
         # 当前部件
         self._curr_piece = TetrisPiece()
         # 下一部件
@@ -128,9 +153,8 @@ class TetrisGame(QWidget):
         '''设置窗口大小
         '''
         # 面板
-        square = 27
-        board_widget = self._board.get_col_count() * square
-        board_height = self._board.get_row_count() * square
+        board_widget = self._board.get_col_count() * self.__square_width
+        board_height = self._board.get_row_count() * self.__square_height
         self._board_scale = board_widget / board_height
         # 窗口
         self._board_to_widget_hor = 3 / (2 + 3 + 2)# 水平布局比例
@@ -160,6 +184,34 @@ class TetrisGame(QWidget):
         height_adjust = board_height_adjust
         return [width_adjust, height_adjust]
 
+    def load_config(self) -> None:
+        '''加载配置
+        '''
+        # 面板行数
+        load_value = GlobalConfig.load(__name__, 'board_row_count', '24')
+        self.__board_row_count = int(load_value)
+        # 面板列数
+        load_value = GlobalConfig.load(__name__, 'board_col_count', '10')
+        self.__board_col_count = int(load_value)
+        # 方块宽度
+        load_value = GlobalConfig.load(__name__, 'square_width', '27')
+        self.__square_width = int(load_value)
+        # 方块高度
+        load_value = GlobalConfig.load(__name__, 'square_height', '27')
+        self.__square_height = int(load_value)
+
+    def save_config(self) -> None:
+        '''保存配置
+        '''
+        # 初始等级
+        GlobalConfig.save(__name__, 'board_row_count', str(self.__board_row_count))
+        # 达到此值, 等级+1
+        GlobalConfig.save(__name__, 'board_col_count', str(self.__board_col_count))
+        # 方块大小
+        GlobalConfig.save(__name__, 'square_width', str(self.__square_width))
+        # 方块大小
+        GlobalConfig.save(__name__, 'square_height', str(self.__square_height))
+
     def set_timer_start(self, enable: bool, time_ms=-1) -> None:
         '''定时设置
         '''
@@ -167,7 +219,7 @@ class TetrisGame(QWidget):
             self._timer.stop()
             return None
         if time_ms == -1:
-            time_ms = 1000 / (1 + self.__data._level)
+            time_ms = 1000 / self.__data._level
         self._timer.start(time_ms, self)
 
     @Slot()# 槽
@@ -225,13 +277,22 @@ class TetrisGame(QWidget):
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         '''事件监控器
         '''
-        # 绘制
         event_type = event.type()
+        # 关闭
+        if event_type == QEvent.Type.Close:
+            self.save_config()
+            self.__data.save_config()
+            GlobalConfig.save_to_file()
+        # 绘制
         if event_type == QEvent.Type.Paint:
+            # 调整方块大小
+            self._board.adjust_square_size()
+            self.__square_width = int(BoardSquare._width)
+            self.__square_height = int(BoardSquare._height)
             # 绘制下一部件
             if watched == self._next_piece_label:
-                self._board.adjust_square_size()# 调整方块大小
-                self.draw_next_piece()
+                if self._next_piece.get_shape() != Shape._None:
+                    self._next_piece.draw(self._next_piece_label)# 绘制部件
             # 面板绘制在 tetris_board.py 中
         # 键盘按下
         elif event_type == QEvent.Type.KeyPress:
@@ -248,13 +309,6 @@ class TetrisGame(QWidget):
                 self.try_transfer_piece(TransferOption.LineDown)
                 self.set_timer_start(False if self._state == GameState.End else True)
         return super(TetrisGame, self).eventFilter(watched, event)
-
-    def draw_next_piece(self) -> None:
-        '''绘制下一部件
-        '''
-        if self._next_piece.get_shape() != Shape._None:
-            draw_piece = self._next_piece.transfer(angle=270)# 垂直镜像, 匹配实际操作形状
-            draw_piece.draw(self._next_piece_label)# 绘制部件
     
     def key_to_option(self, key_value: int) -> TransferOption:
         '''键值 转为 变换操作

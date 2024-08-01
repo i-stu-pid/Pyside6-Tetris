@@ -33,7 +33,7 @@ class TetrisBoard(QFrame):
     由 row_count * col_count 个方块组成
     最下方为 row 0
     """
-    def __init__(self, parent=None, row_count=22, col_count=10) -> None:
+    def __init__(self, parent=None, row_count=24, col_count=10) -> None:
         """构造
         """
         super().__init__(parent)# 访问父类的方法和属性

@@ -59,7 +59,7 @@ class DragResize(QObject):
     def __init_param(self) -> None:
         '''参数
         '''
-        self.__drag_edge = 4# 检测边缘
+        self.__drag_edge = 5# 检测边缘
         self.__widget_edge = 0# 窗口边沿
         self.__is_mouse_press = False# 鼠标单击
 

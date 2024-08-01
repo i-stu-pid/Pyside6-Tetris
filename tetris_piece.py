@@ -250,7 +250,7 @@ class TetrisPiece(object):
             return None
         with QPainter(target_widget) as painter:
             # 填充窗口背景
-            widget_rect = target_widget.rect()
+            widget_rect = target_widget.contentsRect()
             painter.fillRect(widget_rect, target_widget.palette().color(QPalette.ColorRole.Window))
             # 部件参数
             piece_width, piece_height = self.get_width(), self.get_height()# 部件大小
@@ -261,6 +261,6 @@ class TetrisPiece(object):
             widget_rect.adjust(dx, dy, -dx, -dy)
             # 绘制方块
             for square in self.get_squares():
+                top = widget_rect.bottom() - (square._y - piece_min_y + 1) * PieceSquare.get_height()
                 left = widget_rect.left() + (square._x - piece_min_x) * PieceSquare.get_width()
-                top = widget_rect.top() + (square._y - piece_min_y) * PieceSquare.get_height()
-                PieceSquare.draw(painter, left, top, QColor(square.get_color()))
+                PieceSquare.draw(painter, top, left, QColor(square.get_color()))
