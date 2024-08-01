@@ -106,7 +106,7 @@ class BoardSquare(object):
         else:
             rect = QRect(left, top, cls._width, cls._height)
         # 内部填充
-        rect.adjust(1, 1, -1, -1)# 调整: 左上角 (-1, -1) 向内收缩 1, 右下角 (1, 1) 向内收缩 1
+        rect.adjust(1, 1, -1, -1)# 调整: 左上角 (1, 1) 向内收缩 1, 右下角 (-1, -1) 向内收缩 1
         painter.fillRect(rect, color)
         rect.adjust(-1, -1, 1, 1)# 恢复
         # 左上角的两条边框
