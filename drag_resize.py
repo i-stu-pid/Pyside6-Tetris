@@ -54,11 +54,12 @@ class DragResize(QObject):
         self.__widget.setFixedSize(widget.size())# 固定大小
         self.__min_size: QSize = self.__widget.size() / 2# 最小尺寸
         self.__size_scale = self.__widget.size().width() / self.__widget.size().height()# 记录比例
+        self.__get_perfect_adjust_callback = None# 由外部控制调整比例
 
     def __init_param(self) -> None:
         '''参数
         '''
-        self.__drag_edge = 5# 检测边缘
+        self.__drag_edge = 4# 检测边缘
         self.__widget_edge = 0# 窗口边沿
         self.__is_mouse_press = False# 鼠标单击
 
@@ -73,6 +74,12 @@ class DragResize(QObject):
         self.__enable_size_hor = True if any else hor
         self.__enable_size_ver = True if any else ver
         self.__enable_size_sca = False if any else scale
+    
+    def set_size_adjust_callback(self, callback_func) -> None:
+        '''比例调整时, 由外部自行调整
+        callback_func(width_adjust: int, height_adjust: int) -> list[width_adjust: int, height_adjust: int]
+        '''
+        self.__get_perfect_adjust_callback = callback_func
 
     @override# 重写
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
@@ -152,19 +159,22 @@ class DragResize(QObject):
         if edge == 0:
             self.__widget.unsetCursor()
             return None
-        elif self.__enable_size_hor and edge in [WidgetEdge.Left, WidgetEdge.Right]:
-            self.__widget.setCursor(Qt.CursorShape.SizeHorCursor)
-            return None
-        elif self.__enable_size_ver and edge in [WidgetEdge.Top, WidgetEdge.Bottom]:
-            self.__widget.setCursor(Qt.CursorShape.SizeVerCursor)
-            return None
+        elif edge in [WidgetEdge.Left, WidgetEdge.Right]:
+            if self.__enable_size_hor:
+                self.__widget.setCursor(Qt.CursorShape.SizeHorCursor)
+                return None
+        elif edge in [WidgetEdge.Top, WidgetEdge.Bottom]:
+            if self.__enable_size_ver:
+                self.__widget.setCursor(Qt.CursorShape.SizeVerCursor)
+                return None
         elif self.__enable_size_any or self.__enable_size_sca:
             if edge in [(WidgetEdge.Left | WidgetEdge.Top), (WidgetEdge.Right | WidgetEdge.Bottom)]:
                 self.__widget.setCursor(Qt.CursorShape.SizeFDiagCursor)
-            else:
+                return None
+            elif edge in [(WidgetEdge.Left | WidgetEdge.Bottom), (WidgetEdge.Right | WidgetEdge.Top)]:
                 self.__widget.setCursor(Qt.CursorShape.SizeBDiagCursor)
-        else:
-            self.__widget.unsetCursor()
+                return None
+        self.__widget.unsetCursor()
 
     def get_hor_edge_adjust(self, mouse_pos: QPoint, widget_rect: QRect) -> list[int]:
         '''水平调整量
@@ -226,7 +236,28 @@ class DragResize(QObject):
         '''
         left_dx, right_dx = self.get_hor_edge_adjust(mouse_pos, widget_rect)
         top_dy, bottom_dy = self.get_ver_edge_adjust(mouse_pos, widget_rect)
-        # 
+        # 同增 同减
+        is_add_x = (left_dx < 0) or (right_dx > 0)
+        is_add_y = (top_dy < 0) or (bottom_dy > 0)
+        if is_add_x != is_add_y:
+            return [0, 0, 0, 0]
+        # 比例调整 (> 0, 增; < 0, 减)
+        dx = -left_dx if left_dx else right_dx
+        dy = -top_dy if top_dy else bottom_dy
+        if abs(dx) < self.__drag_edge or abs(dy) < self.__drag_edge:# 改变过小
+            return [0, 0, 0, 0]
+        if self.__get_perfect_adjust_callback:# 由外部调整
+            dx, dy = self.__get_perfect_adjust_callback(dx, dy)
+        else:# 自行按比例调整
+            if dx > dy:
+                dy = dx / self.__size_scale
+            else:
+                dx = dy * self.__size_scale
+        # 恢复
+        left_dx = -dx if left_dx else 0
+        right_dx = dx if right_dx else 0
+        top_dy = -dx if top_dy else 0
+        bottom_dy = dx if bottom_dy else 0
         return [left_dx, top_dy, right_dx, bottom_dy]
 
     def adjust_widget(self, widget_rect: QRect, adjust_list: list[int]) -> None:

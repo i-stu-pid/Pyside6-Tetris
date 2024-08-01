@@ -20,7 +20,7 @@ from PySide6.QtCore import (Qt, Slot, QBasicTimer, QTimerEvent, QEvent, QObject)
 from PySide6.QtGui import (QKeyEvent)
 from PySide6.QtWidgets import (QWidget, QMessageBox)
 # 自封装库
-from drag_resize import DragResize
+from drag_resize import DragResize# 调整大小
 from tetris_board import BoardSquare# 游戏面板
 from tetris_piece import TetrisPiece, Shape# 游戏部件
 from tetris_game_ui import Ui_Form# ui界面
@@ -123,7 +123,6 @@ class TetrisGame(QWidget):
         # 窗口大小
         self.__init_size()
         self.installEventFilter(self)# 事件监听
-        self._darg_resize = DragResize(self, scale=True)# 比例调整大小
 
     def __init_size(self) -> None:
         '''设置窗口大小
@@ -132,11 +131,34 @@ class TetrisGame(QWidget):
         square = 27
         board_widget = self._board.get_col_count() * square
         board_height = self._board.get_row_count() * square
+        self._board_scale = board_widget / board_height
         # 窗口
-        widget_widget = (board_widget / 3) * (2 + 3 + 2)# 水平布局比例
+        self._board_to_widget_hor = 3 / (2 + 3 + 2)# 水平布局比例
+        widget_widget = board_widget / self._board_to_widget_hor
         widget_height = board_height
         # 调整大小
         self.setFixedSize(widget_widget, widget_height)
+        self._darg_resize = DragResize(self, scale=True)# 比例调整大小
+        self._darg_resize.set_size_adjust_callback(self.get_size_perfect_adjust)# 回调
+
+    def get_size_perfect_adjust(self, width_adjust: int, height_adjust: int) -> list[int]:
+        '''最优调整
+        大小调整需以面板为基础
+        '''
+        # 转为面板调整
+        board_width_adjust = width_adjust * self._board_to_widget_hor
+        board_height_adjust = height_adjust
+        adjust_scale = board_width_adjust / board_height_adjust
+        # 以宽度为基准
+        if adjust_scale > self._board_scale:
+            board_height_adjust = board_width_adjust / self._board_scale
+        # 以高度为基准
+        else:
+            board_width_adjust = board_height_adjust * self._board_scale
+        # 最优调整
+        width_adjust = board_width_adjust / self._board_to_widget_hor
+        height_adjust = board_height_adjust
+        return [width_adjust, height_adjust]
 
     def set_timer_start(self, enable: bool, time_ms=-1) -> None:
         '''定时设置
