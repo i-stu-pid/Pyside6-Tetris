@@ -1,0 +1,5 @@
+{
+    "editor.formatOnSave": true,
+    "python.defaultInterpreterPath": "~/miniconda3/envs/env_pyside6/python.exe",
+    "python.terminal.activateEnvironment": true
+}
