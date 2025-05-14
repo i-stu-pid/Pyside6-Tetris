@@ -1,9 +1,6 @@
 ﻿name: env_pyside6
 channels:
   - defaults
-  - https://repo.anaconda.com/pkgs/main
-  - https://repo.anaconda.com/pkgs/r
-  - https://repo.anaconda.com/pkgs/msys2
 dependencies:
   - bzip2=1.0.8=h2bbff1b_6
   - ca-certificates=2024.7.2=haa95532_0
@@ -23,13 +20,20 @@ dependencies:
   - zlib=1.2.13=h8cc25b3_1
   - pip:
       - altgraph==0.17.4
-      - packaging==25.0
+      - importlib-metadata==8.0.0
+      - numpy==2.0.0
+      - opencv-python==4.10.0.84
+      - packaging==24.1
       - pefile==2023.2.7
-      - pyinstaller==6.13.0
-      - pyinstaller-hooks-contrib==2025.4
-      - pyside6==6.9.0
-      - pyside6-addons==6.9.0
-      - pyside6-essentials==6.9.0
-      - pywin32-ctypes==0.2.3
-      - shiboken6==6.9.0
-prefix: C:\Users\stu--\miniconda3\envs\env_pyside6
+      - pillow==10.4.0
+      - pyinstaller==6.8.0
+      - pyinstaller-hooks-contrib==2024.7
+      - pymupdf==1.24.7
+      - pymupdfb==1.24.6
+      - pyside6==6.7.2
+      - pyside6-addons==6.7.2
+      - pyside6-essentials==6.7.2
+      - pywin32-ctypes==0.2.2
+      - shiboken6==6.7.2
+      - zipp==3.19.2
+prefix: C:\Users\stu-pid\miniconda3\envs\env_pyside6
